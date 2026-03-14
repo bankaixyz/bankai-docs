@@ -1,0 +1,14 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+body {
+  font-family:
+    Charter,
+    'Iowan Old Style',
+    'Palatino Linotype',
+    'Book Antiqua',
+    'URW Palladio L',
+    Georgia,
+    serif;
+}

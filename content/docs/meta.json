@@ -1,0 +1,10 @@
+{
+  "title": "Bankai Docs",
+  "pages": [
+    "index",
+    "concepts",
+    "chains",
+    "sdk",
+    "api"
+  ]
+}
