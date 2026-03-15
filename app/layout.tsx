@@ -22,6 +22,10 @@ export const metadata: Metadata = {
     template: '%s | Bankai Docs',
   },
   description: 'Public documentation for Bankai product concepts, chains, SDK guidance, and API reference.',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/icon.png',
+  },
 };
 
 export default function Layout({ children }: LayoutProps<'/'>) {

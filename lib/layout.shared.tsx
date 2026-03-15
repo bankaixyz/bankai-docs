@@ -16,7 +16,7 @@ export function baseOptions(): BaseLayoutProps {
     nav: {
       title: (
         <Link href="/" className="bankai-brand">
-          <span className="bankai-brand-mark">BK</span>
+          <img src="/icon.png" alt="" />
           <span>Bankai Docs</span>
         </Link>
       ),
