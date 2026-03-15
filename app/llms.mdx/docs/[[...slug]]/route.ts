@@ -16,5 +16,8 @@ export async function GET(_req: Request, { params }: RouteContext<'/llms.mdx/doc
 }
 
 export function generateStaticParams() {
-  return source.generateParams();
+  // Keep only leaf pages (depth >= 2) to avoid file/directory conflicts
+  // in static export. Section index pages (api, sdk, concepts) would
+  // produce an extensionless file that collides with the child directory.
+  return source.generateParams().filter((p) => p.slug.length >= 2);
 }

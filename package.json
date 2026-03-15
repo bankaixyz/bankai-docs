@@ -11,6 +11,7 @@
     "fetch:openapi": "bash scripts/fetch-openapi.sh"
   },
   "dependencies": {
+    "@orama/orama": "^3.1.18",
     "fumadocs-core": "16.6.17",
     "fumadocs-mdx": "14.2.10",
     "fumadocs-openapi": "^10.3.18",
