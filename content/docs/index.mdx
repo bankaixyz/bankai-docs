@@ -1,37 +1,45 @@
 ---
 title: Overview
-description: Product docs for Bankai, organized around concepts, chains, SDK guidance, and future API reference.
+description: Bankai gives you trustless access to on-chain data
+  through stateless light clients and recursive proofs -- verify
+  anywhere, no infrastructure required.
 ---
 
-Bankai docs are moving into a product-first structure so contributors can tell where a page belongs before content grows large.
+Bankai is a stateless light-client system. It syncs light clients
+fully off-chain, compresses their trusted state into recursive zk
+proofs, and lets you verify headers and chain data on demand --
+on-chain, client-side, or inside a zkVM. No contracts to deploy, no
+sync to maintain, no chain-specific infrastructure to run.
 
-## What Lives Here?
+If you're new here, start with the concepts to understand the
+architecture, then move to the SDK to build your first proof flow.
 
 <Cards>
   <Card
     title="Concepts"
     href="/docs/concepts"
-    description="Trust model, stateless light clients, and product-level mental models."
-  />
-  <Card
-    title="Chains"
-    href="/docs/chains"
-    description="Supported networks, chain coverage, and future chain-specific guidance."
+    description="Stateless light clients, Bankai blocks, MMRs, and
+      the trust model -- the ideas behind the system."
   />
   <Card
     title="SDK"
     href="/docs/sdk"
-    description="Canonical SDK docs still live in bankai-sdk while this site foundation settles."
+    description="Fetch proof bundles, verify results trustlessly, and
+      get to a first proof flow in minutes."
   />
   <Card
-    title="API"
+    title="API Reference"
     href="/docs/api"
-    description="Reserved for generated Bankai API reference once the public OpenAPI path is confirmed."
+    description="The raw Bankai HTTP surface for direct endpoint
+      access and proof payloads."
   />
 </Cards>
 
-## Ownership
+## Reading path
 
-- Product concepts and cross-product docs belong in `bankai-docs`.
-- SDK-specific guides remain canonical in `bankai-sdk` for now.
-- API reference will come from Bankai OpenAPI rather than hand-written pages.
+1. [Stateless Light Clients](./concepts/stateless-light-clients.mdx)
+   -- the core primitive.
+2. [Bankai Blocks](./concepts/bankai-blocks.mdx) -- the trust anchor.
+3. [SDK Quickstart](./sdk/quickstart.mdx) -- first proof flow.
+4. [Proof Bundles](./sdk/proof-bundles.mdx) -- what the SDK builds.
+5. [Verify a Proof](./sdk/verify-a-proof.mdx) -- trustless results.

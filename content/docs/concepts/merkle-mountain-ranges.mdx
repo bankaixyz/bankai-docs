@@ -1,0 +1,122 @@
+---
+title: Merkle Mountain Ranges
+description: MMRs are the append-friendly accumulator Bankai uses to commit historical headers so any past block can be proven from a single root.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Bankai uses Merkle Mountain Ranges (MMRs) as its core data accumulator.
+Every verified header -- beacon, execution, or OP Stack -- is appended to
+an MMR, and the resulting root is committed inside the
+[Bankai block](./bankai-blocks.mdx). That root is what lets you prove any
+historical header from a single trust anchor.
+
+## What an MMR is
+
+A Merkle Mountain Range is an append-only data structure made up of a
+sequence of perfect Merkle trees arranged in descending order of size.
+Each tree size appears at most once. When a new element is appended, the
+structure merges adjacent same-sized trees to maintain this invariant.
+
+The result looks like a mountain range:
+
+```
+        15
+       /  \
+      7    14
+     / \  / \
+    3  6 10 13       18
+   /\ /\ /\ /\     / \
+  1 2 4 5 8 9 11 12 16 17  19
+```
+
+The roots of the individual trees are called **peaks**. Together, the
+peaks define the MMR root -- a single hash that commits to every element
+in the structure.
+
+<Callout title="Credit">
+Bankai's MMR implementation builds on work by the
+[Herodotus](https://www.herodotus.dev/) team, who have contributed
+significant research and tooling around MMRs for on-chain data
+structures. Their
+[MMR explainer](https://mmr.herodotus.dev/what-is-mmr) is an excellent
+resource if you want to go deeper into the data structure itself.
+</Callout>
+
+## Why MMRs over standard Merkle trees
+
+Standard Merkle trees require the number of leaves to be a power of two.
+Appending a single element to a tree of size *n* can require rebuilding
+the entire tree, which is expensive and unpredictable.
+
+MMRs solve this with a key property: **appending an element is cheap and
+predictable**. Adding one leaf only requires hashing up to log(n) nodes
+-- the same cost as a Merkle proof. There is no rebalancing, no
+rebuilding, and the cost doesn't spike when crossing a power-of-two
+boundary.
+
+This makes MMRs ideal for Bankai's use case:
+
+- Bankai continuously appends headers as it verifies new chain state.
+- Each append needs to be efficient because it happens inside a ZK
+  circuit, where every hash operation has a proving cost.
+- The structure must never need a costly reorganization.
+
+| Property | Standard Merkle tree | MMR |
+|---|---|---|
+| Append cost | O(n) worst case | O(log n) always |
+| Requires power-of-two leaves | Yes | No |
+| Proof size | O(log n) | O(log n) |
+| Append-only friendly | No | Yes |
+
+## How Bankai uses MMRs
+
+Bankai maintains multiple MMRs, each serving a different purpose:
+
+| MMR | What it accumulates | Where the root lives |
+|---|---|---|
+| **Bankai block MMR** | Previous Bankai blocks | Top-level block fields |
+| **Beacon header MMR** | Verified Ethereum beacon headers | Beacon client section |
+| **Execution header MMR** | Verified Ethereum execution headers | Execution client section |
+| **OP chain header MMR** | Verified OP Stack headers (per chain) | Individual OP chain client |
+
+Every time Bankai verifies a new header, it appends the header hash to
+the relevant MMR. The updated root is committed in the next Bankai block.
+This means a single verified Bankai block gives you a commitment to the
+full history of every chain Bankai has covered.
+
+## Dual-hash roots
+
+Each MMR in Bankai is maintained with two hash functions in parallel:
+
+- **Keccak-256** -- for EVM-compatible and standard off-chain
+  verification.
+- **Cairo Poseidon2** -- for efficient verification inside a ZK circuit.
+
+Both roots commit to the same set of elements. The consumer picks the
+hash function that fits their verification environment. If you're
+verifying on-chain or in a standard application, use Keccak. If you're
+composing Bankai proofs inside another ZK system, use Poseidon.
+
+## How inclusion proofs work
+
+To prove that a specific header exists in an MMR, you provide:
+
+1. The header hash (the leaf).
+2. The sibling hashes along the path from the leaf to its peak.
+3. The other peaks in the MMR.
+
+The verifier recomputes the peak from the leaf and path, then recomputes
+the MMR root from all peaks. If the result matches the trusted root from
+the verified Bankai block, the header is proven.
+
+This is the mechanism that turns a single Bankai block proof into access
+to any historical header. From there, MPT proofs against the trusted
+header give you accounts, storage, transactions, and receipts.
+
+## Read next
+
+- [Bankai Blocks](./bankai-blocks.mdx) -- where MMR roots are committed
+  and how they fit into the block structure.
+- [Trust Model](./trust-model.mdx) -- guarantees and assumptions around
+  verified results.

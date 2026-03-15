@@ -1,14 +1,105 @@
 @import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/solar.css';
 @import 'fumadocs-ui/css/preset.css';
+@import 'fumadocs-openapi/css/preset.css';
+
+:root {
+  --fd-layout-width: 1520px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
 
 body {
-  font-family:
-    Charter,
-    'Iowan Old Style',
-    'Palatino Linotype',
-    'Book Antiqua',
-    'URW Palladio L',
-    Georgia,
-    serif;
+  position: relative;
+  background:
+    radial-gradient(circle at top left, oklch(0.9 0.04 255 / 0.8), transparent 24%),
+    radial-gradient(circle at 85% 12%, oklch(0.88 0.08 70 / 0.35), transparent 22%),
+    linear-gradient(180deg, var(--color-fd-background), var(--color-fd-muted));
+  color: var(--color-fd-foreground);
+  font-family: var(--font-plex-sans), 'IBM Plex Sans', sans-serif;
 }
+
+.dark body {
+  background:
+    radial-gradient(circle at top left, oklch(0.44 0.06 255 / 0.28), transparent 24%),
+    radial-gradient(circle at 82% 14%, oklch(0.56 0.1 70 / 0.18), transparent 20%),
+    linear-gradient(180deg, var(--color-fd-background), var(--color-fd-card));
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, hsl(0 0% 55% / 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(0 0% 55% / 0.08) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: linear-gradient(180deg, white, transparent 80%);
+}
+
+::selection {
+  background: oklch(0.78 0.08 255 / 0.35);
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-plex-mono), 'IBM Plex Mono', monospace;
+}
+
+#nd-home-layout,
+#nd-notebook-layout {
+  backdrop-filter: saturate(130%) blur(6px);
+}
+
+#nd-home-layout nav,
+#nd-notebook-layout nav,
+#nd-sidebar,
+[data-radix-popper-content-wrapper] > * {
+  backdrop-filter: saturate(130%) blur(12px);
+}
+
+.dark #nd-sidebar {
+  --color-fd-muted: hsl(226 18% 13%);
+  --color-fd-secondary: hsl(227 16% 15%);
+}
+
+.bankai-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.bankai-brand-mark {
+  display: inline-flex;
+  height: 1.9rem;
+  width: 1.9rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, var(--color-fd-primary), oklch(0.72 0.14 58));
+  box-shadow:
+    0 10px 30px oklch(0.54 0.09 255 / 0.22),
+    inset 0 1px 0 hsl(0 0% 100% / 0.35);
+  color: white;
+  font-family: var(--font-plex-mono), monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+
+.bankai-prose-tight :where(p) {
+  max-width: 72ch;
+}
+
+.bankai-prose-tight :where(h1, h2, h3, h4) {
+  letter-spacing: -0.03em;
+}
+

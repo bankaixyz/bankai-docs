@@ -7,14 +7,18 @@
     "dev": "next dev",
     "start": "next start",
     "types:check": "fumadocs-mdx && next typegen && tsc --noEmit",
-    "postinstall": "fumadocs-mdx"
+    "postinstall": "fumadocs-mdx",
+    "fetch:openapi": "bash scripts/fetch-openapi.sh"
   },
   "dependencies": {
     "fumadocs-core": "16.6.17",
     "fumadocs-mdx": "14.2.10",
+    "fumadocs-openapi": "^10.3.18",
     "fumadocs-ui": "16.6.17",
     "lucide-react": "^0.577.0",
+    "mermaid": "^11.13.0",
     "next": "16.1.6",
+    "next-themes": "^0.4.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tailwind-merge": "^3.5.0"

@@ -1,0 +1,11 @@
+{
+  "title": "SDK",
+  "defaultOpen": true,
+  "pages": [
+    "quickstart",
+    "proof-bundles",
+    "verify-a-proof",
+    "api-client",
+    "supported-surfaces"
+  ]
+}

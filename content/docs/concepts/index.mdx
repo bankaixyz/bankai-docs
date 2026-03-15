@@ -1,17 +1,35 @@
 ---
 title: Concepts
-description: Product-level ideas that explain how Bankai works and why its trust model matters.
+description: The ideas behind Bankai -- stateless light clients, recursive proofs, and how verified chain data becomes accessible anywhere.
 ---
 
-This section is for concepts that belong to Bankai as a product, not to a specific SDK package.
+This section covers how Bankai works at a conceptual level. Start here if
+you want to understand what Bankai proves, how trust is established, and
+why the architecture looks the way it does.
 
-## Planned Topics
+If you only read one page, make it
+[Stateless Light Clients](./stateless-light-clients.mdx) -- it explains
+the core primitive everything else is built on.
 
-- Stateless light clients
-- Trust model
-- Bankai blocks
-- Multi-chain verification model
-
-## Ownership
-
-If a page explains Bankai at the product or protocol level, it should live here.
+<Cards>
+  <Card
+    title="Stateless Light Clients"
+    href="/docs/concepts/stateless-light-clients"
+    description="The core idea: trust carried forward in recursive proofs instead of stored in verifier state."
+  />
+  <Card
+    title="Bankai Blocks"
+    href="/docs/concepts/bankai-blocks"
+    description="The proven, structured snapshot that commits all verified chain data into one trust anchor."
+  />
+  <Card
+    title="Merkle Mountain Ranges"
+    href="/docs/concepts/merkle-mountain-ranges"
+    description="The append-friendly accumulator that makes historical headers provable from a single root."
+  />
+  <Card
+    title="Trust Model"
+    href="/docs/concepts/trust-model"
+    description="What Bankai assumes at bootstrap, what each proof guarantees, and how finality works."
+  />
+</Cards>

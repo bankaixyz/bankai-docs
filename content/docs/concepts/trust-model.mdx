@@ -1,0 +1,120 @@
+---
+title: Trust Model
+description: What Bankai assumes at bootstrap, what each proof guarantees, and how verified outputs become trustworthy chain data.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Bankai's trust model has two foundations: a trusted bootstrap checkpoint,
+and a recursive proof chain that carries trust forward from that point.
+Everything else -- verified blocks, trusted headers, decommitted chain
+data -- follows from those two.
+
+## Bootstrap
+
+Bankai needs a trusted checkpoint to start. This is an inherent property of
+proof-of-stake light clients because of
+[weak subjectivity](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/weak-subjectivity/):
+a client can't safely begin from arbitrary deep history without some
+trusted starting point.
+
+The first trust assumption is simple:
+
+- Start from a trusted checkpoint.
+
+After that, Bankai's recursive proof chain carries trust forward
+cryptographically. No further manual initialization is needed.
+
+## What the proof chain guarantees
+
+Each proof in the Bankai chain establishes continuity from the previously
+trusted state. In the
+[research paper's](https://cdn.prod.website-files.com/684c03db8ff22a3ad7706bfc/690228ed425232af0e961bc8_main%20(2).pdf)
+formal model, every transition proof verifies:
+
+1. The previous proof is valid (or this is the trusted genesis step).
+2. The signers belong to the previously trusted validator set commitment.
+3. The new block or header is validly signed according to the source
+   chain's consensus rules.
+4. Validator set rotation rules are applied correctly at period boundaries.
+5. The new public output matches the newly computed trusted state.
+
+The key assumptions behind this chain are:
+
+- **Proof-system soundness** -- a valid proof can only be produced by
+  running the Bankai proving program correctly.
+- **Trusted bootstrap** -- the starting checkpoint was genuine.
+
+As long as these hold, each proof is an unforgeable certificate that the
+state transition it attests to actually happened on the source chain.
+
+## Verification
+
+The proof output is a direct result of the two foundations above: a trusted
+bootstrap and a sound proof chain.
+
+To verify a Bankai proof, you need to confirm one thing beyond the proof
+itself: that it was produced by the correct proving program. You do this by
+checking the **verification key** (or `program_hash`) against the known,
+open-source Bankai program. This ties the proof to a specific, auditable
+codebase.
+
+Once the proof verifies:
+
+1. The resulting **block hash** identifies a verified
+   [Bankai block](./bankai-blocks.mdx).
+2. That block contains commitments to headers from every supported chain.
+3. Those headers are trusted because they were added by verifying sync
+   committee signatures (for Ethereum L1) or by proving they were
+   committed to L1 (for OP Stack chains).
+4. You can then **decommit any on-chain data** by verifying MPT proofs
+   against the trusted headers -- accounts, storage slots, transactions,
+   receipts.
+
+<Callout title="Program identity matters">
+Verifying a proof is not enough on its own. You also need to confirm
+*which* proving program produced it. Pin and check `program_hash` if your
+application depends on a specific Bankai deployment or release.
+</Callout>
+
+## Finality
+
+Bankai follows the source chain's notion of finality exactly. It doesn't
+invent its own consensus rule.
+
+### Ethereum
+
+Bankai mirrors Ethereum's native finality checkpoints:
+
+- **Latest** -- the most recent block the chain has produced.
+- **Justified** -- a checkpoint that has received enough attestations to be
+  considered likely final.
+- **Finalized** -- a checkpoint that can never be reverted under normal
+  protocol operation.
+
+If a fork happens at the latest epoch, Bankai simply produces a new Bankai
+block on the winning fork. A finalized Ethereum block stays finalized in
+Bankai -- the mapping is one-to-one. Use `finalized` by default for
+trust-sensitive verification.
+
+### OP Stack
+
+OP Stack finality in Bankai is tied to Ethereum L1 in two ways:
+
+- **L1 submission block** -- the OP state is considered final once the L1
+  block it was submitted in reaches the desired finality level. This is the
+  faster path available today.
+- **Dispute game resolution** -- full finality based on the dispute game
+  being resolved on L1. This path is still in development.
+
+Because OP Stack trust is rooted in L1 commitments, OP finality inherits
+from Ethereum finality rather than operating independently.
+
+## Read next
+
+- [Stateless Light Clients](./stateless-light-clients.mdx) -- the core
+  mental model.
+- [Bankai Blocks](./bankai-blocks.mdx) -- what becomes trusted after
+  verification.
+- [Verify a Proof](../sdk/verify-a-proof.mdx) -- how the trust boundary
+  shows up in the SDK flow.

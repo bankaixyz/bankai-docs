@@ -1,0 +1,135 @@
+---
+title: API Client
+description: Direct access to Bankai HTTP endpoints when you need
+  raw inspection or proof payloads instead of the batch builder.
+---
+
+The batch builder is the recommended default. Reach for `sdk.api`
+when you need direct access to the Bankai HTTP surface -- inspecting
+state, discovering chains, or fetching raw proof payloads yourself.
+
+## Creating a client
+
+The API client is available as a public field on every `Bankai`
+instance:
+
+```rust
+use bankai_sdk::{Bankai, Network};
+
+let sdk = Bankai::new(Network::Sepolia, None, None, None);
+let api = &sdk.api;
+```
+
+You can also create a standalone `ApiClient` if you only need API
+access without RPC fetchers:
+
+```rust
+use bankai_sdk::ApiClient;
+
+let api = ApiClient::new(Network::Sepolia);
+```
+
+Use `ApiClient::new_with_base_url(...)` when pointing at a custom or
+local Bankai deployment.
+
+## Namespaces
+
+The client is organized into namespaces, each mapping to a family of
+HTTP endpoints.
+
+| Namespace | What it covers |
+|---|---|
+| `blocks()` | Bankai block discovery, full block payloads, block proofs, and Bankai MMR proofs. |
+| `chains()` | Chain metadata -- list supported chains or fetch a single chain by ID. |
+| `health()` | API health check. |
+| `stats()` | Aggregate overview stats and per-block detail stats. |
+| `explorer()` | Explorer overview payload. |
+| `ethereum()` | Ethereum epoch, sync committee, and sub-namespaces for beacon and execution. |
+| `op_stack()` | OP Stack snapshots, Merkle proofs, MMR proofs, and light-client proof bundles. |
+
+## Block filter
+
+Most namespace methods accept a `BankaiBlockFilterDto` to select a
+Bankai block view:
+
+```rust
+use bankai_types::api::ethereum::BankaiBlockFilterDto;
+
+let finalized = BankaiBlockFilterDto::finalized();
+let justified = BankaiBlockFilterDto::justified();
+let latest    = BankaiBlockFilterDto::latest();
+let explicit  = BankaiBlockFilterDto::with_bankai_block_number(400);
+```
+
+Use `finalized` by default for trust-sensitive flows.
+
+## Common inspection flow
+
+A typical exploration session looks like this:
+
+```rust
+use bankai_types::api::ethereum::BankaiBlockFilterDto;
+
+let chains = sdk.api.chains().list().await?;
+let latest = sdk.api.blocks().latest_number().await?;
+
+let filter = BankaiBlockFilterDto::finalized();
+let exec_snapshot = sdk.api.ethereum().execution().snapshot(&filter).await?;
+let base_snapshot = sdk.api.op_stack().snapshot("base", &filter).await?;
+```
+
+This tells you which chains the API supports, what the latest Bankai
+block is, and what the finalized Ethereum and OP snapshots look like.
+
+## Ethereum namespace
+
+`ethereum()` exposes top-level methods and two sub-namespaces:
+
+| Method / sub-namespace | What it does |
+|---|---|
+| `epoch(filter)` | Fetch the Ethereum epoch for a Bankai view. |
+| `epoch_by_number(n)` | Fetch a specific epoch by number. |
+| `sync_committee(term_id)` | Fetch sync committee keys by term. |
+| `beacon()` | Sub-namespace for beacon height, snapshot, MMR roots, MMR proofs, and light-client proofs. |
+| `execution()` | Sub-namespace for execution height, snapshot, MMR roots, MMR proofs, and light-client proofs. |
+
+Both `beacon()` and `execution()` share the same method pattern:
+
+| Method | What it returns |
+|---|---|
+| `height(filter)` | Resolved chain height for the Bankai view. |
+| `snapshot(filter)` | Full client snapshot. |
+| `mmr_root(filter)` | MMR roots (Keccak and Poseidon). |
+| `mmr_proof(request)` | MMR inclusion proof for a specific header. |
+| `light_client_proof(request)` | Full light-client proof bundle for requested headers. |
+
+## OP Stack namespace
+
+`op_stack()` methods take a chain name (`"base"`, `"worldchain"`,
+etc.) as the first argument:
+
+| Method | What it returns |
+|---|---|
+| `height(name, filter)` | Resolved OP submission height. |
+| `snapshot(name, filter)` | OP chain snapshot summary. |
+| `merkle_proof(name, request)` | Merkle proof for the OP client decommitment. |
+| `mmr_proof(name, request)` | OP MMR proof bundle. |
+| `light_client_proof(name, request)` | Full OP light-client proof bundle. |
+
+## When to use the API client
+
+Use the API client when you need to:
+
+- inspect API state before building a bundle
+- discover active chains dynamically
+- fetch raw snapshots, selectors, or proof payloads
+- debug or explore the Bankai API surface
+
+For everything else, the [batch builder](./proof-bundles.mdx) is the
+faster and safer path to verified data.
+
+## Read next
+
+- [Quickstart](./quickstart.mdx) -- the main SDK path.
+- [Supported Chains](./supported-surfaces.mdx) -- available chains
+  and networks.

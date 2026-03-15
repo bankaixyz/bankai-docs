@@ -1,0 +1,137 @@
+---
+title: Verify a Proof
+description: verify_batch_proof checks the full trust chain and returns
+  only trustlessly verified on-chain data -- ready for apps, clients,
+  or zkVMs.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+`verify_batch_proof` is the single entry point for verification. Pass
+it a `ProofBundle` from the SDK, and it walks the full trust chain --
+Bankai block proof, MMR header proofs, MPT data proofs -- returning
+only data that has been cryptographically verified against the
+[stateless light client](../concepts/stateless-light-clients.mdx). The
+results are fully trustless. No RPC trust, no external oracle, no
+intermediary.
+
+<Callout title="zkVM-compatible out of the box">
+`bankai-verify` is `no_std`-compatible. You can run the same
+verification logic inside a zkVM, giving your proving system seamless
+access to verified on-chain data without any code changes.
+</Callout>
+
+## Entry point
+
+```rust
+use bankai_types::inputs::ProofBundle;
+use bankai_verify::verify_batch_proof;
+
+let results = verify_batch_proof(proof_bundle)?;
+```
+
+That single call verifies every proof in the bundle and returns a
+`BatchResults` containing only verified outputs. If any proof in the
+chain is invalid, the call returns a `VerifyError` and no data is
+exposed.
+
+## Verification order
+
+The verifier walks the trust chain in a fixed order:
+
+1. **Bankai block proof** -- verifies the STWO zero-knowledge proof
+   and extracts the trusted [Bankai block](../concepts/bankai-blocks.mdx)
+   with its committed MMR roots.
+2. **Header proofs** -- verifies MMR inclusion proofs for each
+   requested header (beacon, execution, or OP Stack) against the
+   roots in the trusted block.
+3. **Data proofs** -- verifies MPT proofs for accounts, storage slots,
+   transactions, and receipts against the state or transaction roots
+   in the trusted headers.
+
+Each step depends on the one before it. The block proof produces the
+roots that validate headers, and the headers produce the roots that
+validate data. Nothing is trusted until its proof checks out.
+
+## Where you can run it
+
+The verifier is a pure function over the proof bundle. It doesn't call
+any RPC, doesn't need network access, and doesn't depend on external
+state.
+
+- **Server-side** -- verify bundles in your backend before serving
+  data to users.
+- **Client-side** -- verify bundles directly in the browser or a
+  native client, removing any trust in your own backend.
+- **Inside a zkVM** -- the crate is `no_std` by default. Disable the
+  `std` feature and run the exact same `verify_batch_proof` inside
+  a proving system to produce a proof over verified on-chain data.
+
+## Result shape
+
+`verify_batch_proof` returns a `BatchResults` with two top-level
+groups:
+
+```rust
+pub struct BatchResults {
+    pub evm: EvmResults,
+    pub op_stack: OpStackResults,
+}
+```
+
+You only need to read the group that matches the requests you made in
+the batch.
+
+### Ethereum results
+
+Access verified Ethereum data through `results.evm`:
+
+| Field | Type | What it contains |
+|---|---|---|
+| `execution_header` | `Vec<ExecutionHeader>` | Verified execution headers (alloy `Header`). |
+| `beacon_header` | `Vec<BeaconHeader>` | Verified beacon headers -- slot, proposer index, state root, body root. |
+| `account` | `Vec<Account>` | Verified accounts -- balance, nonce, code hash, storage root. |
+| `storage_slot` | `Vec<Vec<(U256, U256)>>` | Verified storage slot key-value pairs, grouped per request. |
+| `tx` | `Vec<TxEnvelope>` | Verified transactions (alloy `TxEnvelope`). |
+| `receipt` | `Vec<ReceiptEnvelope>` | Verified receipts (alloy `ReceiptEnvelope`). |
+
+### OP Stack results
+
+Access verified OP Stack data through `results.op_stack`. The shape
+mirrors the Ethereum side:
+
+| Field | Type | What it contains |
+|---|---|---|
+| `header` | `Vec<ExecutionHeader>` | Verified OP headers. |
+| `account` | `Vec<Account>` | Verified OP accounts. |
+| `storage_slot` | `Vec<Vec<(U256, U256)>>` | Verified OP storage slot key-value pairs. |
+| `tx` | `Vec<TxEnvelope>` | Verified OP transactions. |
+| `receipt` | `Vec<ReceiptEnvelope>` | Verified OP receipts. |
+
+### Accessing results
+
+Results are returned in the same order you requested them in the
+batch builder. A typical access pattern:
+
+```rust
+let results = verify_batch_proof(proof_bundle)?;
+
+let header = &results.evm.execution_header[0];
+println!("Block {} verified", header.number);
+
+let account = &results.evm.account[0];
+println!("Balance: {}", account.balance);
+
+for (key, value) in &results.evm.storage_slot[0] {
+    println!("Slot {} = {}", key, value);
+}
+```
+
+## Read next
+
+- [Proof Bundles](./proof-bundles.mdx) -- how to build the bundle
+  this function consumes.
+- [Bankai Blocks](../concepts/bankai-blocks.mdx) -- the trust anchor
+  at the root of every verification.
+- [API Client](./api-client.mdx) -- raw endpoint access when you need
+  lower-level control.

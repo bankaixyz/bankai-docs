@@ -1,19 +1,53 @@
 ---
 title: SDK
-description: SDK docs remain canonical in bankai-sdk while bankai-docs establishes its structure and ownership boundaries.
+description: The Bankai SDK fetches proof bundles for arbitrary
+  on-chain data and verifies them trustlessly -- in your app, on
+  the client, or inside a zkVM.
 ---
 
-For this first pass, SDK documentation is still authored in `bankai-sdk`.
+The SDK is the main interface for working with Bankai. It handles
+querying the Bankai API, constructing proofs from RPC data, and
+verifying the result -- all in two crates.
 
-## Canonical SDK Docs
+Start with the [Quickstart](./quickstart.mdx) and follow the reading
+order below.
 
-- [Getting Started](https://github.com/bankaixyz/bankai-sdk/blob/main/docs/getting-started.md)
-- [Proof Bundles](https://github.com/bankaixyz/bankai-sdk/blob/main/docs/proof-bundles.md)
-- [Verify Guide](https://github.com/bankaixyz/bankai-sdk/blob/main/docs/verify.md)
-- [Supported Surfaces](https://github.com/bankaixyz/bankai-sdk/blob/main/docs/supported-surfaces.md)
-- [API Client Overview](https://github.com/bankaixyz/bankai-sdk/blob/main/docs/api-client.md)
+<Cards>
+  <Card
+    title="Quickstart"
+    href="/docs/sdk/quickstart"
+    description="Configure the SDK, build a proof bundle, and verify
+      your first on-chain data."
+  />
+  <Card
+    title="Proof Bundles"
+    href="/docs/sdk/proof-bundles"
+    description="How the SDK packages block proofs, header proofs, and
+      data proofs into one verifiable object."
+  />
+  <Card
+    title="Verify a Proof"
+    href="/docs/sdk/verify-a-proof"
+    description="The verification entry point -- trustless results for
+      apps, clients, and zkVMs."
+  />
+  <Card
+    title="API Client"
+    href="/docs/sdk/api-client"
+    description="Direct access to Bankai HTTP endpoints when you need
+      raw inspection or proof payloads."
+  />
+  <Card
+    title="Supported Chains"
+    href="/docs/sdk/supported-surfaces"
+    description="Available chains, networks, and block selectors."
+  />
+</Cards>
 
-## Ownership
+## Reading order
 
-- Edit SDK-specific guides in `bankai-sdk/docs`.
-- Link to them from `bankai-docs` until mirroring or sync automation becomes worth the maintenance cost.
+1. [Quickstart](./quickstart.mdx)
+2. [Proof Bundles](./proof-bundles.mdx)
+3. [Verify a Proof](./verify-a-proof.mdx)
+4. [API Client](./api-client.mdx) -- only if you need lower-level
+   control

@@ -1,0 +1,73 @@
+---
+title: Supported Chains
+description: Bankai currently supports Ethereum L1 and OP Stack chains,
+  with the same proof interface across all of them.
+---
+
+Bankai exposes the same proof interface across every supported chain.
+You request data the same way regardless of whether it lives on
+Ethereum L1 or an OP Stack rollup -- the SDK and verifier handle the
+chain-specific proof paths internally.
+
+## Ethereum
+
+Bankai tracks the Ethereum beacon and execution layers through its
+stateless light client. The following data is available for
+verification:
+
+| Data type | Scope |
+|---|---|
+| Beacon headers | Any slot covered by the Bankai MMR. |
+| Execution headers | Any block covered by the Bankai MMR. |
+| Accounts | Balance, nonce, code hash, storage root at a given block. |
+| Storage slots | Arbitrary storage slot values at a given block. |
+| Transactions | Any transaction by hash. |
+| Receipts | Any receipt by transaction hash. |
+
+## OP Stack
+
+Bankai supports multiple OP Stack chains behind a single Bankai block
+commitment. Each supported chain gets its own client state and MMR,
+all Merkle-ized into one root.
+
+The chains currently used in examples and tests:
+
+- **Base** -- chain name `"base"`
+- **World Chain** -- chain name `"worldchain"`
+
+The set of supported chains isn't hardcoded in the SDK. Use
+`sdk.api.chains().list()` to discover what the API supports at
+runtime.
+
+The same data types are available on OP Stack chains as on Ethereum:
+headers, accounts, storage slots, transactions, and receipts.
+
+## Networks
+
+| Network | API base URL | Use case |
+|---|---|---|
+| `Network::Sepolia` | `https://sepolia.api.bankai.xyz` | Default -- Ethereum Sepolia testnet. |
+| `Network::Local` | `http://localhost:8080` | Local Bankai deployments and debugging. |
+
+## Bankai block selectors
+
+When using the [API client](./api-client.mdx), you select a Bankai
+block view through `BankaiBlockFilterDto`:
+
+| Selector | Meaning |
+|---|---|
+| `finalized` | Latest finalized Bankai view. Recommended default. |
+| `justified` | Latest justified Bankai view. |
+| `latest` | Most recent Bankai view available. |
+| explicit block number | A specific Bankai block anchor. |
+
+The batch builder defaults to the latest finalized block when you pass
+`None` as the block number.
+
+## Read next
+
+- [Proof Bundles](./proof-bundles.mdx) -- batch builder methods for
+  each chain.
+- [API Client](./api-client.mdx) -- raw endpoint access per
+  namespace.
+- [Quickstart](./quickstart.mdx) -- first proof flow from scratch.

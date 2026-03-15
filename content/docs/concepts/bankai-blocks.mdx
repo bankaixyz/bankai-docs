@@ -1,0 +1,164 @@
+---
+title: Bankai Blocks
+description: Bankai blocks are the trust anchors that accumulate and commit all verified chain data into a single, provable structure.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Bankai produces its own blocks. Each block is proven and linked to the
+previous one through recursion, forming a chain of cryptographic
+commitments. A Bankai block is not a blockchain block in the traditional
+sense -- there is no consensus, no mempool, no gas. It is a structured
+snapshot of everything Bankai has verified up to that point, sealed by a
+zk proof.
+
+Once a Bankai block is verified, every commitment inside it becomes
+trustworthy. That is what makes it the trust anchor for the rest of the
+system.
+
+## Block structure
+
+Every Bankai block contains a small set of top-level fields that
+identify it and link it into Bankai's history:
+
+| Field | Purpose |
+|---|---|
+| `block_number` | The Bankai block height. |
+| `prev_block_hash` | Hash of the previous Bankai block, linking the chain. |
+| `version` | The Bankai program version that produced this block. |
+| `program_hash` | The proving program identity. Used to verify the proof came from the expected open-source Bankai program. |
+
+Below these top-level fields, the block contains four commitment
+sections: the Bankai MMR, the beacon client, the execution client, and
+the OP chains commitment.
+
+## Bankai MMR
+
+Bankai accumulates its own blocks into a
+[Merkle Mountain Range](./merkle-mountain-ranges.mdx). This means that
+from any verified Bankai block, you can access any previous Bankai block
+by providing an MMR inclusion proof against the committed root.
+
+The Bankai MMR is maintained in two hash functions:
+
+| Field | Purpose |
+|---|---|
+| `bankai_mmr_root_keccak` | MMR root using Keccak-256, for EVM-compatible verification. |
+| `bankai_mmr_root_poseidon` | MMR root using Cairo Poseidon2, for ZK-friendly verification. |
+
+Having both roots lets consumers pick the hash function that fits their
+verification environment -- Keccak for on-chain or standard off-chain
+use, Poseidon for efficient verification inside a ZK circuit.
+
+## Beacon client
+
+The beacon client section captures the Ethereum beacon chain state at the
+point this Bankai block was produced.
+
+| Field | Purpose |
+|---|---|
+| `slot_number` | The beacon chain slot this block covers. |
+| `header_root` | Root of the beacon block header. |
+| `state_root` | Root of the beacon state. |
+| `justified_height` | The highest justified beacon slot. |
+| `finalized_height` | The highest finalized beacon slot. |
+| `num_signers` | Number of sync committee members that signed. Indicates participation strength. |
+| `current_validator_root` | Commitment to the current sync committee validator set. |
+| `next_validator_root` | Commitment to the next sync committee validator set, enabling committee rotation. |
+
+The beacon client also maintains its own header MMR:
+
+| Field | Purpose |
+|---|---|
+| `mmr_root_keccak` | MMR root over all verified beacon headers, using Keccak-256. |
+| `mmr_root_poseidon` | Same MMR, using Cairo Poseidon2. |
+
+Every beacon header that Bankai verifies (by checking sync committee
+signatures) is appended to this MMR. That means a single Bankai block
+proof gives you a commitment to the full range of beacon headers Bankai
+has seen, and any individual header can be recovered with an MMR
+inclusion proof.
+
+## Execution client
+
+The execution client section captures the Ethereum execution layer state.
+
+| Field | Purpose |
+|---|---|
+| `block_number` | The execution block height. |
+| `header_hash` | Hash of the execution block header. |
+| `justified_height` | The highest justified execution block. |
+| `finalized_height` | The highest finalized execution block. |
+
+Like the beacon client, the execution client maintains its own header MMR:
+
+| Field | Purpose |
+|---|---|
+| `mmr_root_keccak` | MMR root over all verified execution headers, using Keccak-256. |
+| `mmr_root_poseidon` | Same MMR, using Cairo Poseidon2. |
+
+Execution headers are added to this MMR after being proven from the
+beacon chain -- each execution header is decommitted from the beacon
+block that contains it. This is what lets you verify MPT proofs for
+accounts, storage, transactions, and receipts against a trusted execution
+header.
+
+## OP chains
+
+Bankai supports multiple OP Stack chains behind a single commitment. Each
+supported OP chain has its own client state, and all clients are
+Merkle-ized into a single root committed in the Bankai block.
+
+| Field | Purpose |
+|---|---|
+| `root` | Merkle root over all committed OP chain clients. |
+| `n_clients` | Number of OP chains included in this commitment. |
+
+To access a specific OP chain, you decommit its client from the root
+using a Merkle proof. Each individual OP chain client contains:
+
+| Field | Purpose |
+|---|---|
+| `chain_id` | The OP chain's chain ID. |
+| `block_number` | The latest committed OP block height. |
+| `header_hash` | Hash of that OP block header. |
+| `l1_submission_block` | The Ethereum L1 block where this OP state was submitted. Ties OP finality to L1. |
+| `mmr_root_keccak` | MMR root over verified OP headers, using Keccak-256. |
+| `mmr_root_poseidon` | Same MMR, using Cairo Poseidon2. |
+
+This structure means OP chain data is accessed in two steps: first
+decommit the client from the OP chains root, then use its MMR root to
+verify individual OP headers. From there, the flow is the same as
+Ethereum -- verify MPT proofs against the trusted header.
+
+<Callout title="OP Stack finality">
+OP chain finality is currently tied to the L1 submission block. The OP
+state is considered final once the L1 block it was submitted in reaches
+the desired finality level. Dispute-game-based finality is still in
+development.
+</Callout>
+
+## How data flows from block to proof
+
+All of these commitment layers serve the same purpose: making on-chain
+data verifiable from a single trust anchor.
+
+1. **Verify the Bankai block proof** -- this gives you a trusted block
+   hash and all the commitments inside it.
+2. **Select the right MMR root** -- beacon, execution, or OP chain,
+   depending on what data you need.
+3. **Verify a header** against that MMR root with an inclusion proof.
+4. **Verify the final data** against the trusted header using an MPT
+   proof -- accounts, storage, transactions, or receipts.
+
+Every step is local verification. No additional trust assumptions are
+introduced after the block proof is verified.
+
+## Read next
+
+- [Trust Model](./trust-model.mdx) -- guarantees and assumptions around
+  verified results.
+- [Proof Bundles](../sdk/proof-bundles.mdx) -- how the SDK packages the
+  block and its proofs into one verifiable object.
+- [Verify a Proof](../sdk/verify-a-proof.mdx) -- the staged verification
+  path in practice.

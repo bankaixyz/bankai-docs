@@ -1,16 +1,105 @@
 ---
-title: API
-description: Placeholder for generated API reference sourced from Bankai OpenAPI.
+title: API Reference
+description: The Bankai HTTP API exposes block data, chain metadata,
+  Ethereum and OP Stack proof endpoints, and system health.
 ---
 
-This section is reserved for generated API reference.
+import { Callout } from "fumadocs-ui/components/callout";
 
-## Planned Source
+The Bankai API is the HTTP layer that powers the SDK. Most users
+should use the [SDK batch builder](../sdk/proof-bundles.mdx) instead
+of calling these endpoints directly -- but the API is fully public
+and documented when you need raw access.
 
-The long-term plan is to render API docs from Bankai's public OpenAPI schema using `fumadocs-openapi`.
+<Callout title="Interactive docs">
+The full interactive API reference is available at
+[sepolia.api.bankai.xyz/v1/swagger](https://sepolia.api.bankai.xyz/v1/swagger).
+</Callout>
 
-## Current Status
+## Base URL
 
-- No live OpenAPI integration in this foundation PR
-- Schema endpoint still needs confirmation because current references disagree between `/openapi.json` and `/v1/openapi.json`
-- The docs site should not depend on private backend access for local development
+| Network | Base URL |
+|---|---|
+| Sepolia | `https://sepolia.api.bankai.xyz` |
+
+All endpoints are prefixed with `/v1`.
+
+## Endpoint overview
+
+### Blocks
+
+Bankai block discovery, detail, and proof material.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/v1/blocks` | List blocks with pagination and status filter. |
+| GET | `/v1/blocks/latest` | Latest block summary. |
+| GET | `/v1/blocks/{height}` | Block detail by height. |
+| GET | `/v1/blocks/{height}/full` | Full block payload including OP snapshots. |
+| GET | `/v1/blocks/{height}/proof` | STWO block proof for a height. |
+| GET | `/v1/blocks/get_proof` | Block proof via query params. |
+| POST | `/v1/blocks/block_proof` | Block proof bundle (block proof + Bankai MMR proof). |
+| POST | `/v1/blocks/mmr_proof` | Bankai MMR proof for a historical block. |
+
+### Chains
+
+Chain metadata and discovery.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/v1/chains` | List all supported chains. |
+| GET | `/v1/chains/{chain_id}` | Chain info by ID. |
+| GET | `/v1/chains/{chain_id}/summary` | Explorer summary for a chain. |
+
+### Ethereum
+
+Epoch, sync committee, and light-client data for beacon and execution
+layers.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/v1/ethereum/epoch` | Ethereum epoch for a Bankai view. |
+| GET | `/v1/ethereum/epoch/{number}` | Specific epoch by number. |
+| GET | `/v1/ethereum/sync_committee` | Sync committee keys by term. |
+| GET | `/v1/ethereum/beacon/height` | Beacon height for a Bankai view. |
+| GET | `/v1/ethereum/beacon/snapshot` | Beacon snapshot. |
+| GET | `/v1/ethereum/beacon/mmr_root` | Beacon MMR roots. |
+| POST | `/v1/ethereum/beacon/mmr_proof` | Beacon MMR inclusion proof. |
+| POST | `/v1/ethereum/beacon/light_client_proof` | Beacon light-client proof bundle. |
+| GET | `/v1/ethereum/execution/height` | Execution height for a Bankai view. |
+| GET | `/v1/ethereum/execution/snapshot` | Execution snapshot. |
+| GET | `/v1/ethereum/execution/mmr_root` | Execution MMR roots. |
+| POST | `/v1/ethereum/execution/mmr_proof` | Execution MMR inclusion proof. |
+| POST | `/v1/ethereum/execution/light_client_proof` | Execution light-client proof bundle. |
+
+### OP Stack
+
+Snapshots and proof endpoints for supported OP chains. Replace
+`{name}` with the chain name (e.g. `base`, `worldchain`).
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/v1/op/{name}/height` | OP submission height for a Bankai view. |
+| GET | `/v1/op/{name}/snapshot` | OP chain snapshot summary. |
+| POST | `/v1/op/{name}/merkle_proof` | Merkle proof for OP client decommitment. |
+| POST | `/v1/op/{name}/mmr_proof` | OP MMR proof bundle. |
+| POST | `/v1/op/{name}/light_client_proof` | Full OP light-client proof bundle. |
+
+### Explorer
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/v1/explorer/overview` | Aggregate overview payload. |
+
+### Health
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/v1/health` | Liveness probe. |
+
+## Read next
+
+- [SDK Quickstart](../sdk/quickstart.mdx) -- the recommended path
+  for most users.
+- [API Client](../sdk/api-client.mdx) -- Rust-side typed access to
+  these endpoints.

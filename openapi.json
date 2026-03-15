@@ -1,0 +1,3479 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Bankai API",
+        "description": "Public HTTP API for querying Bankai chain data and cryptographic proofs.",
+        "license": {
+            "name": ""
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "https://sepolia.api.bankai.xyz",
+            "description": "Sepolia"
+        },
+        {
+            "url": "http://localhost:8080",
+            "description": "Local"
+        }
+    ],
+    "paths": {
+        "/v1/blocks": {
+            "get": {
+                "tags": [
+                    "Blocks"
+                ],
+                "summary": "/v1/blocks",
+                "description": "List blocks with optional pagination and status filtering. Use the returned cursor to fetch the next page.",
+                "operationId": "list_blocks",
+                "parameters": [
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "description": "Cursor encoded by the API to fetch the next page",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Maximum number of blocks to return (1-100)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filter results by block status",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/BlockStatusDto"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List blocks with pagination",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PageDto_BlockSummaryDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid pagination or filter options",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/blocks/block_proof": {
+            "post": {
+                "tags": [
+                    "Blocks"
+                ],
+                "summary": "/v1/blocks/block_proof",
+                "description": "Generate a Bankai block proof bundle containing block proof and historical Bankai MMR proof.",
+                "operationId": "get_bankai_block_proof",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BankaiBlockProofRequestDto"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Generated block proof + Bankai MMR proof",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BankaiBlockProofWithMmrDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Referenced resources not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid selection or hash",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/blocks/get_proof": {
+            "get": {
+                "tags": [
+                    "Blocks"
+                ],
+                "summary": "/v1/blocks/get_proof",
+                "description": "Returns the S-two proof of a given bankai block (default: latest completed).",
+                "operationId": "get_block_proof_query",
+                "parameters": [
+                    {
+                        "name": "block_number",
+                        "in": "query",
+                        "description": "Bankai block number to fetch the proof for (defaults to latest completed).",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "proof_format",
+                        "in": "query",
+                        "description": "Returned proof payload format (`bin` by default).",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ProofFormat"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "S-two proof of the requested bankai block",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BankaiBlockProofDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Proof not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/blocks/latest": {
+            "get": {
+                "tags": [
+                    "Blocks"
+                ],
+                "summary": "/v1/blocks/latest",
+                "description": "Return the latest known block and its summary information. Optionally filter by block status.",
+                "operationId": "latest_block",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LatestBlockQueryDto"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Latest available block",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BlockSummaryDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No blocks available",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/blocks/mmr_proof": {
+            "post": {
+                "tags": [
+                    "Blocks"
+                ],
+                "summary": "/v1/blocks/mmr_proof",
+                "description": "Generate a Bankai MMR inclusion proof for a historical target block hash against a resolved reference block.",
+                "operationId": "get_bankai_mmr_proof",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BankaiMmrProofRequestDto"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Generated Bankai MMR proof",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BankaiMmrProofDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Referenced resources not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid selection or hash",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/blocks/{height}": {
+            "get": {
+                "tags": [
+                    "Blocks"
+                ],
+                "summary": "/v1/blocks/{height}",
+                "description": "Return detailed information for the requested block height, including consensus snapshots and Bankai block summary fields.",
+                "operationId": "block_detail",
+                "parameters": [
+                    {
+                        "name": "height",
+                        "in": "path",
+                        "description": "Block height",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detailed information about a block",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BlockDetailDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Block not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/blocks/{height}/full": {
+            "get": {
+                "tags": [
+                    "Blocks"
+                ],
+                "summary": "/v1/blocks/{height}/full",
+                "description": "Return full witness-derived block data, including beacon, execution, and OP chain snapshots resolved at this block height.",
+                "operationId": "block_full",
+                "parameters": [
+                    {
+                        "name": "height",
+                        "in": "path",
+                        "description": "Block height",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Full block payload"
+                    },
+                    "404": {
+                        "description": "Block witness not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/blocks/{height}/proof": {
+            "get": {
+                "tags": [
+                    "Blocks"
+                ],
+                "summary": "/v1/blocks/{height}/proof",
+                "description": "Returns the S-two proof of a given bankai block.",
+                "operationId": "get_block_proof_path",
+                "parameters": [
+                    {
+                        "name": "height",
+                        "in": "path",
+                        "description": "Block height",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "proof_format",
+                        "in": "query",
+                        "description": "Returned proof payload format (`bin` by default).",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ProofFormat"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "S-two proof of the requested bankai block",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BankaiBlockProofDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Proof not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/chains": {
+            "get": {
+                "tags": [
+                    "Chains"
+                ],
+                "summary": "/v1/chains",
+                "description": "Return metadata for all supported chains known to Bankai. Use this to discover network IDs and names before querying other endpoints.",
+                "operationId": "list_chains",
+                "responses": {
+                    "200": {
+                        "description": "List available chains",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ChainInfoDto"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/chains/{chain_id}": {
+            "get": {
+                "tags": [
+                    "Chains"
+                ],
+                "summary": "/v1/chains/{chain_id}",
+                "description": "Return metadata for a single chain by its numeric identifier.",
+                "operationId": "get_chain",
+                "parameters": [
+                    {
+                        "name": "chain_id",
+                        "in": "path",
+                        "description": "Chain identifier",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Chain found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChainInfoDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Chain not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/chains/{chain_id}/summary": {
+            "get": {
+                "tags": [
+                    "Chains"
+                ],
+                "summary": "/v1/chains/{chain_id}/summary",
+                "description": "Return the explorer-oriented latest state summary for a single chain.",
+                "operationId": "get_chain_summary",
+                "parameters": [
+                    {
+                        "name": "chain_id",
+                        "in": "path",
+                        "description": "Chain identifier",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Chain summary",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChainSummaryDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Chain not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ethereum/beacon/height": {
+            "get": {
+                "tags": [
+                    "Ethereum"
+                ],
+                "summary": "/v1/ethereum/beacon/height",
+                "description": "Return the latest beacon height based on the selector filter.",
+                "operationId": "get_beacon_height",
+                "parameters": [
+                    {
+                        "name": "selector",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/BankaiBlockSelectorDto"
+                        }
+                    },
+                    {
+                        "name": "bankai_block_number",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Beacon height",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HeightDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No data available",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ethereum/beacon/light_client_proof": {
+            "post": {
+                "tags": [
+                    "Ethereum"
+                ],
+                "summary": "/v1/ethereum/beacon/light_client_proof",
+                "description": "Generate a light client proof for the beacon chain.",
+                "operationId": "get_beacon_light_client_proof",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EthereumLightClientProofRequestDto"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Generated light client proof",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EthereumLightClientProofDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Referenced resources not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid header hash",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ethereum/beacon/mmr_proof": {
+            "post": {
+                "tags": [
+                    "Ethereum"
+                ],
+                "summary": "/v1/ethereum/beacon/mmr_proof",
+                "description": "Generate an MMR inclusion proof for a beacon header hash.",
+                "operationId": "get_beacon_mmr_proof",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EthereumMmrProofRequestDto"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Generated MMR proof",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MmrProofDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Referenced resources not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid header hash",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ethereum/beacon/mmr_root": {
+            "get": {
+                "tags": [
+                    "Ethereum"
+                ],
+                "summary": "/v1/ethereum/beacon/mmr_root",
+                "description": "Return beacon MMR roots for the resolved snapshot.",
+                "operationId": "get_beacon_mmr_root",
+                "parameters": [
+                    {
+                        "name": "selector",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/BankaiBlockSelectorDto"
+                        }
+                    },
+                    {
+                        "name": "bankai_block_number",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Beacon MMR roots",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MmrRootsDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Snapshot not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ethereum/beacon/snapshot": {
+            "get": {
+                "tags": [
+                    "Ethereum"
+                ],
+                "summary": "/v1/ethereum/beacon/snapshot",
+                "description": "Return the beacon snapshot for the resolved bankai block.",
+                "operationId": "get_beacon_snapshot",
+                "parameters": [
+                    {
+                        "name": "selector",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/BankaiBlockSelectorDto"
+                        }
+                    },
+                    {
+                        "name": "bankai_block_number",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Beacon snapshot",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BeaconSnapshotDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Snapshot not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ethereum/epoch": {
+            "get": {
+                "tags": [
+                    "Ethereum"
+                ],
+                "summary": "/v1/ethereum/epoch",
+                "description": "Return the Ethereum epoch for the resolved bankai block.",
+                "operationId": "get_epoch",
+                "parameters": [
+                    {
+                        "name": "selector",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/BankaiBlockSelectorDto"
+                        }
+                    },
+                    {
+                        "name": "bankai_block_number",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ethereum epoch",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EthereumEpochDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Epoch not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ethereum/epoch/{number}": {
+            "get": {
+                "tags": [
+                    "Ethereum"
+                ],
+                "summary": "/v1/ethereum/epoch/{number}",
+                "description": "Return the Ethereum epoch by number (requires completed bankai block).",
+                "operationId": "get_epoch_by_number",
+                "parameters": [
+                    {
+                        "name": "number",
+                        "in": "path",
+                        "description": "Epoch number",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ethereum epoch",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EthereumEpochDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Epoch not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Block not completed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ethereum/execution/height": {
+            "get": {
+                "tags": [
+                    "Ethereum"
+                ],
+                "summary": "/v1/ethereum/execution/height",
+                "description": "Return the latest execution height based on the selector filter.",
+                "operationId": "get_execution_height",
+                "parameters": [
+                    {
+                        "name": "selector",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/BankaiBlockSelectorDto"
+                        }
+                    },
+                    {
+                        "name": "bankai_block_number",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Execution height",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HeightDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No data available",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ethereum/execution/light_client_proof": {
+            "post": {
+                "tags": [
+                    "Ethereum"
+                ],
+                "summary": "/v1/ethereum/execution/light_client_proof",
+                "description": "Generate a light client proof for the execution chain.",
+                "operationId": "get_execution_light_client_proof",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EthereumLightClientProofRequestDto"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Generated light client proof",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EthereumLightClientProofDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Referenced resources not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid header hash",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ethereum/execution/mmr_proof": {
+            "post": {
+                "tags": [
+                    "Ethereum"
+                ],
+                "summary": "/v1/ethereum/execution/mmr_proof",
+                "description": "Generate an MMR inclusion proof for an execution header hash.",
+                "operationId": "get_execution_mmr_proof",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EthereumMmrProofRequestDto"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Generated MMR proof",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MmrProofDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Referenced resources not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid header hash",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ethereum/execution/mmr_root": {
+            "get": {
+                "tags": [
+                    "Ethereum"
+                ],
+                "summary": "/v1/ethereum/execution/mmr_root",
+                "description": "Return execution MMR roots for the resolved snapshot.",
+                "operationId": "get_execution_mmr_root",
+                "parameters": [
+                    {
+                        "name": "selector",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/BankaiBlockSelectorDto"
+                        }
+                    },
+                    {
+                        "name": "bankai_block_number",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Execution MMR roots",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MmrRootsDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Snapshot not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ethereum/execution/snapshot": {
+            "get": {
+                "tags": [
+                    "Ethereum"
+                ],
+                "summary": "/v1/ethereum/execution/snapshot",
+                "description": "Return the execution snapshot for the resolved bankai block.",
+                "operationId": "get_execution_snapshot",
+                "parameters": [
+                    {
+                        "name": "selector",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/BankaiBlockSelectorDto"
+                        }
+                    },
+                    {
+                        "name": "bankai_block_number",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Execution snapshot",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExecutionSnapshotDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Snapshot not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/ethereum/sync_committee": {
+            "get": {
+                "tags": [
+                    "Ethereum"
+                ],
+                "summary": "/v1/ethereum/sync_committee",
+                "description": "Fetch sync committee keys by term id.",
+                "operationId": "get_sync_committee",
+                "parameters": [
+                    {
+                        "name": "term_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sync committee keys",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SyncCommitteeKeysDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Sync committee not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/explorer/overview": {
+            "get": {
+                "tags": [
+                    "Explorer"
+                ],
+                "summary": "/v1/explorer/overview",
+                "description": "Explorer-oriented overview of Bankai status, supported chains, and recent blocks.",
+                "operationId": "overview",
+                "responses": {
+                    "200": {
+                        "description": "Explorer overview",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExplorerOverviewDto"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/health": {
+            "get": {
+                "tags": [
+                    "Health"
+                ],
+                "summary": "/v1/health",
+                "description": "Liveness probe to confirm the API is up and responsive.",
+                "operationId": "handle_health",
+                "responses": {
+                    "200": {
+                        "description": "Health check response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/op/{name}/height": {
+            "get": {
+                "tags": [
+                    "OP Stack"
+                ],
+                "summary": "/v1/op/{name}/height",
+                "description": "Return OP chain L1 submission height for the resolved selector finality.",
+                "operationId": "get_op_stack_height",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "description": "OP stack chain name (case-insensitive exact match)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "selector",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/BankaiBlockSelectorDto"
+                        }
+                    },
+                    {
+                        "name": "bankai_block_number",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OP stack L1 submission height",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HeightDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Snapshot or chain not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Snapshot does not satisfy requested finality",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/op/{name}/light_client_proof": {
+            "post": {
+                "tags": [
+                    "OP Stack"
+                ],
+                "summary": "/v1/op/{name}/light_client_proof",
+                "description": "Generate a full OP stack light client proof bundle (block proof + merkle proof + MMR proofs).",
+                "operationId": "get_op_stack_light_client_proof",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "description": "OP stack chain name (case-insensitive exact match)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OpStackLightClientProofRequestDto"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Generated OP stack light client proof",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OpStackLightClientProofDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Referenced resources not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid header hash",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/op/{name}/merkle_proof": {
+            "post": {
+                "tags": [
+                    "OP Stack"
+                ],
+                "summary": "/v1/op/{name}/merkle_proof",
+                "description": "Generate a merkle proof decommitting an OP chain output from op_chains.root.",
+                "operationId": "get_op_stack_merkle_proof",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "description": "OP stack chain name (case-insensitive exact match)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OpStackMerkleProofRequestDto"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Generated OP merkle proof",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OpMerkleProofDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Referenced resources not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid merkle reconstruction state",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/op/{name}/mmr_proof": {
+            "post": {
+                "tags": [
+                    "OP Stack"
+                ],
+                "summary": "/v1/op/{name}/mmr_proof",
+                "description": "Generate an OP chain MMR proof and include the merkle decommitment to link it back to op_chains.root.",
+                "operationId": "get_op_stack_mmr_proof",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "description": "OP stack chain name (case-insensitive exact match)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OpStackMmrProofRequestDto"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Generated OP stack MMR proof bundle",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OpStackMmrProofDto"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Referenced resources not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid header hash",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/op/{name}/snapshot": {
+            "get": {
+                "tags": [
+                    "OP Stack"
+                ],
+                "summary": "/v1/op/{name}/snapshot",
+                "description": "Return the OP stack snapshot for a given chain name at the resolved Bankai block.",
+                "operationId": "get_op_stack_snapshot",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "description": "OP stack chain name (case-insensitive exact match)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "selector",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/BankaiBlockSelectorDto"
+                        }
+                    },
+                    {
+                        "name": "bankai_block_number",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OP stack snapshot",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OpChainSnapshotSummaryDto"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Snapshot or chain not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Snapshot does not satisfy requested finality",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Unexpected error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "BankaiBlockFilterDto": {
+                "type": "object",
+                "properties": {
+                    "bankai_block_number": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "selector": {
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "$ref": "#/components/schemas/BankaiBlockSelectorDto"
+                            }
+                        ]
+                    }
+                }
+            },
+            "BankaiBlockProofDto": {
+                "type": "object",
+                "required": [
+                    "block_number",
+                    "block",
+                    "proof"
+                ],
+                "properties": {
+                    "block": {
+                        "type": "object"
+                    },
+                    "block_number": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "proof": {
+                        "$ref": "#/components/schemas/BlockProofPayloadDto"
+                    }
+                }
+            },
+            "BankaiBlockProofRequestDto": {
+                "type": "object",
+                "required": [
+                    "filter",
+                    "target_block",
+                    "hashing_function"
+                ],
+                "properties": {
+                    "filter": {
+                        "$ref": "#/components/schemas/BankaiBlockFilterDto"
+                    },
+                    "hashing_function": {
+                        "$ref": "#/components/schemas/HashingFunction"
+                    },
+                    "proof_format": {
+                        "$ref": "#/components/schemas/ProofFormat"
+                    },
+                    "target_block": {
+                        "$ref": "#/components/schemas/BankaiTargetBlockSelectorDto"
+                    }
+                }
+            },
+            "BankaiBlockProofWithMmrDto": {
+                "type": "object",
+                "required": [
+                    "block_proof",
+                    "mmr_proof"
+                ],
+                "properties": {
+                    "block_proof": {
+                        "$ref": "#/components/schemas/BankaiBlockProofDto"
+                    },
+                    "mmr_proof": {
+                        "$ref": "#/components/schemas/BankaiMmrProofDto"
+                    }
+                }
+            },
+            "BankaiBlockSelectorDto": {
+                "type": "string",
+                "enum": [
+                    "latest",
+                    "justified",
+                    "finalized"
+                ]
+            },
+            "BankaiMmrProofDto": {
+                "type": "object",
+                "required": [
+                    "reference_block_number",
+                    "target_block_number",
+                    "hashing_function",
+                    "block_hash",
+                    "root",
+                    "elements_index",
+                    "elements_count",
+                    "path",
+                    "peaks"
+                ],
+                "properties": {
+                    "block_hash": {
+                        "type": "string"
+                    },
+                    "elements_count": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "elements_index": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "hashing_function": {
+                        "$ref": "#/components/schemas/HashingFunction"
+                    },
+                    "path": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "peaks": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "reference_block_number": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "root": {
+                        "type": "string"
+                    },
+                    "target_block_number": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "BankaiMmrProofRequestDto": {
+                "type": "object",
+                "required": [
+                    "filter",
+                    "target_block",
+                    "hashing_function"
+                ],
+                "properties": {
+                    "filter": {
+                        "$ref": "#/components/schemas/BankaiBlockFilterDto"
+                    },
+                    "hashing_function": {
+                        "$ref": "#/components/schemas/HashingFunction"
+                    },
+                    "target_block": {
+                        "$ref": "#/components/schemas/BankaiTargetBlockSelectorDto"
+                    }
+                }
+            },
+            "BankaiTargetBlockSelectorDto": {
+                "type": "object",
+                "properties": {
+                    "block_hash": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "block_number": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "BeaconSnapshotDto": {
+                "type": "object",
+                "required": [
+                    "chain_id",
+                    "epoch_number",
+                    "start_height",
+                    "end_height",
+                    "beacon_root",
+                    "state_root",
+                    "justified_height",
+                    "finalized_height",
+                    "mmr_snapshot"
+                ],
+                "properties": {
+                    "beacon_root": {
+                        "type": "string"
+                    },
+                    "chain_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "end_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "epoch_number": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "finalized_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "justified_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "mmr_snapshot": {
+                        "$ref": "#/components/schemas/MmrSnapshotDto"
+                    },
+                    "start_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "state_root": {
+                        "type": "string"
+                    }
+                }
+            },
+            "BlockDetailDto": {
+                "type": "object",
+                "required": [
+                    "height",
+                    "updated_at",
+                    "block_hash",
+                    "prev_block_hash",
+                    "bankai_mmr_roots",
+                    "status"
+                ],
+                "properties": {
+                    "bankai_mmr_roots": {
+                        "$ref": "#/components/schemas/MmrRootsDto"
+                    },
+                    "block_hash": {
+                        "type": "string"
+                    },
+                    "ethereum": {
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "$ref": "#/components/schemas/EthereumConsensusSummaryDto"
+                            }
+                        ]
+                    },
+                    "height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "op_chains": {
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "$ref": "#/components/schemas/OpChainsSummaryDto"
+                            }
+                        ]
+                    },
+                    "prev_block_hash": {
+                        "type": "string"
+                    },
+                    "program_hash": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/BlockStatusDto"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "BlockProofPayloadDto": {
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "required": [
+                            "data",
+                            "format"
+                        ],
+                        "properties": {
+                            "data": {
+                                "type": "string"
+                            },
+                            "format": {
+                                "type": "string",
+                                "enum": [
+                                    "bin"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "data",
+                            "format"
+                        ],
+                        "properties": {
+                            "data": {},
+                            "format": {
+                                "type": "string",
+                                "enum": [
+                                    "json"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "BlockStatusDto": {
+                "type": "string",
+                "enum": [
+                    "initial",
+                    "fetched_inputs",
+                    "generating_trace",
+                    "prove_trace",
+                    "proving_in_progress",
+                    "retrieving_proof",
+                    "trace_generated",
+                    "proven",
+                    "input_construction_failed",
+                    "trace_generation_failed",
+                    "proof_submission_failed",
+                    "proving_failed",
+                    "proof_retrieval_failed",
+                    "completed"
+                ]
+            },
+            "BlockSummaryDto": {
+                "type": "object",
+                "required": [
+                    "height",
+                    "updated_at",
+                    "status"
+                ],
+                "properties": {
+                    "ethereum": {
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "$ref": "#/components/schemas/EthereumConsensusSummaryDto"
+                            }
+                        ]
+                    },
+                    "height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "op_chains": {
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "$ref": "#/components/schemas/OpChainsSummaryDto"
+                            }
+                        ]
+                    },
+                    "program_hash": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/BlockStatusDto"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "ChainEcosystemDto": {
+                "type": "string",
+                "enum": [
+                    "ethereum",
+                    "bitcoin"
+                ]
+            },
+            "ChainInfoDto": {
+                "type": "object",
+                "required": [
+                    "integration_id",
+                    "chain_id",
+                    "name",
+                    "ecosystem",
+                    "chain_type",
+                    "active"
+                ],
+                "properties": {
+                    "activation_block_height": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "active": {
+                        "type": "boolean"
+                    },
+                    "chain_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "chain_type": {
+                        "$ref": "#/components/schemas/ChainTypeDto"
+                    },
+                    "ecosystem": {
+                        "$ref": "#/components/schemas/ChainEcosystemDto"
+                    },
+                    "integration_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "parent_chain_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "ChainLatestSnapshotDto": {
+                "type": "object",
+                "required": [
+                    "current_height",
+                    "start_height",
+                    "end_height",
+                    "mmr_roots"
+                ],
+                "properties": {
+                    "current_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "end_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "finalized_height": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "header_hash": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "justified_height": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "l1_submission_block": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "mmr_roots": {
+                        "$ref": "#/components/schemas/MmrRootsDto"
+                    },
+                    "start_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "ChainSnapshotSummaryDto": {
+                "type": "object",
+                "required": [
+                    "chain_id",
+                    "start_height",
+                    "end_height",
+                    "justified_height",
+                    "finalized_height",
+                    "mmr_roots"
+                ],
+                "properties": {
+                    "chain_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "end_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "finalized_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "justified_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "mmr_roots": {
+                        "$ref": "#/components/schemas/MmrRootsDto"
+                    },
+                    "start_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "ChainSummaryDto": {
+                "type": "object",
+                "required": [
+                    "chain",
+                    "state"
+                ],
+                "properties": {
+                    "chain": {
+                        "$ref": "#/components/schemas/ChainInfoDto"
+                    },
+                    "latest_bankai_block_height": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "latest_snapshot": {
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "$ref": "#/components/schemas/ChainLatestSnapshotDto"
+                            }
+                        ]
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/ChainSummaryStateDto"
+                    }
+                }
+            },
+            "ChainSummaryStateDto": {
+                "type": "object",
+                "required": [
+                    "status"
+                ],
+                "properties": {
+                    "activation_block_height": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ChainSummaryStatusDto"
+                    }
+                }
+            },
+            "ChainSummaryStatusDto": {
+                "type": "string",
+                "enum": [
+                    "active",
+                    "configured"
+                ]
+            },
+            "ChainTypeDto": {
+                "type": "string",
+                "enum": [
+                    "consensus_layer",
+                    "execution_layer",
+                    "op_stack"
+                ]
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "required": [
+                    "error_id",
+                    "code",
+                    "message"
+                ],
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "details": {
+                        "type": "object"
+                    },
+                    "error_id": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            },
+            "EthereumConsensusSummaryDto": {
+                "type": "object",
+                "required": [
+                    "epoch_number",
+                    "epochs_count",
+                    "num_signers"
+                ],
+                "properties": {
+                    "beacon": {
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "$ref": "#/components/schemas/ChainSnapshotSummaryDto"
+                            }
+                        ]
+                    },
+                    "epoch_number": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "epochs_count": {
+                        "type": "integer",
+                        "format": "int32",
+                        "minimum": 0
+                    },
+                    "execution": {
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "$ref": "#/components/schemas/ChainSnapshotSummaryDto"
+                            }
+                        ]
+                    },
+                    "num_signers": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "EthereumEpochDto": {
+                "type": "object",
+                "required": [
+                    "number",
+                    "start_height",
+                    "end_height",
+                    "num_signers",
+                    "epochs_count",
+                    "block_number"
+                ],
+                "properties": {
+                    "block_number": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "end_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "epochs_count": {
+                        "type": "integer",
+                        "format": "int32",
+                        "minimum": 0
+                    },
+                    "num_signers": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "number": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "start_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "sync_committee_term_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "EthereumLightClientProofDto": {
+                "type": "object",
+                "required": [
+                    "block_proof",
+                    "mmr_proofs"
+                ],
+                "properties": {
+                    "block_proof": {
+                        "$ref": "#/components/schemas/BankaiBlockProofDto"
+                    },
+                    "mmr_proofs": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MmrProofDto"
+                        }
+                    }
+                }
+            },
+            "EthereumLightClientProofRequestDto": {
+                "type": "object",
+                "required": [
+                    "filter",
+                    "hashing_function",
+                    "header_hashes"
+                ],
+                "properties": {
+                    "filter": {
+                        "$ref": "#/components/schemas/BankaiBlockFilterDto"
+                    },
+                    "hashing_function": {
+                        "$ref": "#/components/schemas/HashingFunction"
+                    },
+                    "header_hashes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "proof_format": {
+                        "$ref": "#/components/schemas/ProofFormat"
+                    }
+                }
+            },
+            "EthereumMmrProofRequestDto": {
+                "type": "object",
+                "required": [
+                    "filter",
+                    "hashing_function",
+                    "header_hash"
+                ],
+                "properties": {
+                    "filter": {
+                        "$ref": "#/components/schemas/BankaiBlockFilterDto"
+                    },
+                    "hashing_function": {
+                        "$ref": "#/components/schemas/HashingFunction"
+                    },
+                    "header_hash": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ExecutionSnapshotDto": {
+                "type": "object",
+                "required": [
+                    "chain_id",
+                    "epoch_number",
+                    "start_height",
+                    "end_height",
+                    "header_hash",
+                    "justified_height",
+                    "finalized_height",
+                    "mmr_snapshot"
+                ],
+                "properties": {
+                    "chain_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "end_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "epoch_number": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "finalized_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "header_hash": {
+                        "type": "string"
+                    },
+                    "justified_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "mmr_snapshot": {
+                        "$ref": "#/components/schemas/MmrSnapshotDto"
+                    },
+                    "start_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "ExplorerChainOverviewDto": {
+                "type": "object",
+                "required": [
+                    "chain"
+                ],
+                "properties": {
+                    "chain": {
+                        "$ref": "#/components/schemas/ChainInfoDto"
+                    },
+                    "current_height": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "first_available_height": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "latest_finalized_height": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "latest_justified_height": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "latest_l1_submission_block": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "ExplorerOpChainsDto": {
+                "type": "object",
+                "required": [
+                    "active",
+                    "configured"
+                ],
+                "properties": {
+                    "active": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ExplorerChainOverviewDto"
+                        }
+                    },
+                    "configured": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ExplorerChainOverviewDto"
+                        }
+                    }
+                }
+            },
+            "ExplorerOverviewDto": {
+                "type": "object",
+                "required": [
+                    "status",
+                    "core_chains",
+                    "op_chains",
+                    "recent_blocks"
+                ],
+                "properties": {
+                    "core_chains": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ExplorerChainOverviewDto"
+                        }
+                    },
+                    "op_chains": {
+                        "$ref": "#/components/schemas/ExplorerOpChainsDto"
+                    },
+                    "recent_blocks": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BlockSummaryDto"
+                        }
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ExplorerStatusDto"
+                    }
+                }
+            },
+            "ExplorerStatusDto": {
+                "type": "object",
+                "required": [
+                    "api_status"
+                ],
+                "properties": {
+                    "api_status": {
+                        "type": "string"
+                    },
+                    "latest_completed_block_height": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "HashingFunction": {
+                "type": "string",
+                "enum": [
+                    "keccak",
+                    "poseidon"
+                ]
+            },
+            "HealthResponse": {
+                "type": "object",
+                "required": [
+                    "status"
+                ],
+                "properties": {
+                    "status": {
+                        "type": "string"
+                    }
+                }
+            },
+            "HeightDto": {
+                "type": "object",
+                "required": [
+                    "height"
+                ],
+                "properties": {
+                    "height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "LatestBlockQueryDto": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "$ref": "#/components/schemas/BlockStatusDto"
+                            }
+                        ]
+                    }
+                }
+            },
+            "MmrProofDto": {
+                "type": "object",
+                "required": [
+                    "network_id",
+                    "block_number",
+                    "hashing_function",
+                    "header_hash",
+                    "root",
+                    "elements_index",
+                    "elements_count",
+                    "path",
+                    "peaks"
+                ],
+                "properties": {
+                    "block_number": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "elements_count": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "elements_index": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "hashing_function": {
+                        "$ref": "#/components/schemas/HashingFunction"
+                    },
+                    "header_hash": {
+                        "type": "string"
+                    },
+                    "network_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "path": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "peaks": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "root": {
+                        "type": "string"
+                    }
+                }
+            },
+            "MmrRootsDto": {
+                "type": "object",
+                "required": [
+                    "keccak_root",
+                    "poseidon_root"
+                ],
+                "properties": {
+                    "keccak_root": {
+                        "type": "string"
+                    },
+                    "poseidon_root": {
+                        "type": "string"
+                    }
+                }
+            },
+            "MmrSnapshotDto": {
+                "type": "object",
+                "required": [
+                    "keccak_root",
+                    "poseidon_root",
+                    "elements_count",
+                    "leafs_count",
+                    "keccak_peaks",
+                    "poseidon_peaks"
+                ],
+                "properties": {
+                    "elements_count": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "keccak_peaks": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "keccak_root": {
+                        "type": "string"
+                    },
+                    "leafs_count": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "poseidon_peaks": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "poseidon_root": {
+                        "type": "string"
+                    }
+                }
+            },
+            "OpChainSnapshotSummaryDto": {
+                "type": "object",
+                "required": [
+                    "chain_id",
+                    "name",
+                    "start_height",
+                    "end_height",
+                    "header_hash",
+                    "l1_submission_block",
+                    "mmr_roots"
+                ],
+                "properties": {
+                    "chain_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "end_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "header_hash": {
+                        "type": "string"
+                    },
+                    "l1_submission_block": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "mmr_roots": {
+                        "$ref": "#/components/schemas/MmrRootsDto"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "start_height": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "OpChainsSummaryDto": {
+                "type": "object",
+                "required": [
+                    "n_clients",
+                    "chains"
+                ],
+                "properties": {
+                    "chains": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OpChainSnapshotSummaryDto"
+                        }
+                    },
+                    "n_clients": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "OpMerkleProofDto": {
+                "type": "object",
+                "required": [
+                    "bankai_block_number",
+                    "chain_id",
+                    "merkle_leaf_index",
+                    "leaf_hash",
+                    "root",
+                    "path"
+                ],
+                "properties": {
+                    "bankai_block_number": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "chain_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "leaf_hash": {
+                        "type": "string"
+                    },
+                    "merkle_leaf_index": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "path": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "root": {
+                        "type": "string"
+                    }
+                }
+            },
+            "OpStackLightClientProofDto": {
+                "type": "object",
+                "required": [
+                    "block_proof",
+                    "snapshot",
+                    "merkle_proof",
+                    "mmr_proofs"
+                ],
+                "properties": {
+                    "block_proof": {
+                        "$ref": "#/components/schemas/BankaiBlockProofDto"
+                    },
+                    "merkle_proof": {
+                        "$ref": "#/components/schemas/OpMerkleProofDto"
+                    },
+                    "mmr_proofs": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MmrProofDto"
+                        }
+                    },
+                    "snapshot": {
+                        "type": "object"
+                    }
+                }
+            },
+            "OpStackLightClientProofRequestDto": {
+                "type": "object",
+                "required": [
+                    "filter",
+                    "hashing_function",
+                    "header_hashes"
+                ],
+                "properties": {
+                    "filter": {
+                        "$ref": "#/components/schemas/BankaiBlockFilterDto"
+                    },
+                    "hashing_function": {
+                        "$ref": "#/components/schemas/HashingFunction"
+                    },
+                    "header_hashes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "proof_format": {
+                        "$ref": "#/components/schemas/ProofFormat"
+                    }
+                }
+            },
+            "OpStackMerkleProofRequestDto": {
+                "type": "object",
+                "required": [
+                    "filter"
+                ],
+                "properties": {
+                    "filter": {
+                        "$ref": "#/components/schemas/BankaiBlockFilterDto"
+                    }
+                }
+            },
+            "OpStackMmrProofDto": {
+                "type": "object",
+                "required": [
+                    "merkle_proof",
+                    "mmr_proof"
+                ],
+                "properties": {
+                    "merkle_proof": {
+                        "$ref": "#/components/schemas/OpMerkleProofDto"
+                    },
+                    "mmr_proof": {
+                        "$ref": "#/components/schemas/MmrProofDto"
+                    }
+                }
+            },
+            "OpStackMmrProofRequestDto": {
+                "type": "object",
+                "required": [
+                    "filter",
+                    "hashing_function",
+                    "header_hash"
+                ],
+                "properties": {
+                    "filter": {
+                        "$ref": "#/components/schemas/BankaiBlockFilterDto"
+                    },
+                    "hashing_function": {
+                        "$ref": "#/components/schemas/HashingFunction"
+                    },
+                    "header_hash": {
+                        "type": "string"
+                    }
+                }
+            },
+            "PageDto_BlockSummaryDto": {
+                "type": "object",
+                "required": [
+                    "data",
+                    "meta"
+                ],
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "height",
+                                "updated_at",
+                                "status"
+                            ],
+                            "properties": {
+                                "ethereum": {
+                                    "oneOf": [
+                                        {
+                                            "type": "null"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/EthereumConsensusSummaryDto"
+                                        }
+                                    ]
+                                },
+                                "height": {
+                                    "type": "integer",
+                                    "format": "int64",
+                                    "minimum": 0
+                                },
+                                "op_chains": {
+                                    "oneOf": [
+                                        {
+                                            "type": "null"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/OpChainsSummaryDto"
+                                        }
+                                    ]
+                                },
+                                "program_hash": {
+                                    "type": "string"
+                                },
+                                "status": {
+                                    "$ref": "#/components/schemas/BlockStatusDto"
+                                },
+                                "updated_at": {
+                                    "type": "string"
+                                },
+                                "version": {
+                                    "type": "integer",
+                                    "format": "int64",
+                                    "minimum": 0
+                                }
+                            }
+                        }
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/PageMetaDto"
+                    }
+                }
+            },
+            "PageMetaDto": {
+                "type": "object",
+                "required": [
+                    "has_more"
+                ],
+                "properties": {
+                    "cursor": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "has_more": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "ProofFormat": {
+                "type": "string",
+                "enum": [
+                    "bin",
+                    "json"
+                ]
+            },
+            "SyncCommitteeKeysDto": {
+                "type": "object",
+                "required": [
+                    "chain_id",
+                    "term_id",
+                    "pubkeys",
+                    "aggregate_pubkey"
+                ],
+                "properties": {
+                    "aggregate_pubkey": {
+                        "type": "string"
+                    },
+                    "chain_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    },
+                    "pubkeys": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "term_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            },
+            "SyncCommitteeQueryDto": {
+                "type": "object",
+                "required": [
+                    "term_id"
+                ],
+                "properties": {
+                    "term_id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
+                    }
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Health",
+            "description": "Health check endpoints"
+        },
+        {
+            "name": "Chains",
+            "description": "Chain metadata"
+        },
+        {
+            "name": "Blocks",
+            "description": "Block summaries and details"
+        },
+        {
+            "name": "Ethereum",
+            "description": "Ethereum light client data"
+        },
+        {
+            "name": "OP Stack",
+            "description": "OP Stack chain snapshots and proofs"
+        },
+        {
+            "name": "Explorer",
+            "description": "Explorer-oriented aggregate data"
+        },
+        {
+            "name": "Metrics",
+            "description": "Prometheus scrape endpoint"
+        }
+    ]
+}

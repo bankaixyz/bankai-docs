@@ -3,7 +3,6 @@
   "pages": [
     "index",
     "concepts",
-    "chains",
     "sdk",
     "api"
   ]

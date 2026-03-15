@@ -1,0 +1,142 @@
+---
+title: Proof Bundles
+description: A proof bundle is the collection of proofs needed to
+  trustlessly access on-chain data -- from the Bankai block proof down
+  to the final MPT decommitment.
+---
+
+A proof bundle is the unit of trust in the Bankai SDK. It packages
+every proof needed to verify the on-chain data you asked for into a
+single object that `bankai-verify` can consume in one call.
+
+Every bundle follows the same layered structure:
+
+1. A **Bankai block proof** -- gives you a verified
+   [Bankai block](../concepts/bankai-blocks.mdx) and all of its
+   commitments.
+2. **MMR proofs** -- prove individual headers against the MMR roots
+   committed in the block.
+3. **MPT proofs** -- decommit concrete data (accounts, storage,
+   transactions, receipts) from those trusted headers.
+
+The SDK assembles all three layers automatically. You describe what
+data you want, and `execute()` returns a bundle containing exactly the
+proofs required to verify it.
+
+## Requesting a bundle
+
+Use `init_batch` to anchor the request to a Bankai block, chain proof
+requests onto the builder, then call `execute()`.
+
+```rust
+use std::collections::HashMap;
+use alloy_primitives::{Address, B256};
+use bankai_sdk::{Bankai, HashingFunction, Network};
+
+let bankai = Bankai::new(
+    Network::Sepolia,
+    Some("https://sepolia.infura.io/v3/YOUR_KEY".to_string()),
+    Some("https://sepolia.beacon-api.example.com".to_string()),
+    Some(HashMap::from([
+        ("base".to_string(), "https://base-rpc.example.com".to_string()),
+    ])),
+);
+
+let proof_bundle = bankai
+    .init_batch(Network::Sepolia, None, HashingFunction::Keccak)
+    .await?
+    .ethereum_execution_header(9_231_247)
+    .ethereum_account(9_231_247, Address::ZERO)
+    .op_stack_header("base", 28_000_000)
+    .op_stack_account("base", 28_000_000, Address::ZERO)
+    .execute()
+    .await?;
+```
+
+The second argument to `init_batch` is an optional Bankai block
+number. When you pass `None`, the SDK anchors to the latest finalized
+Bankai block -- this is the recommended default. Pass an explicit
+number only when you need to pin to a specific anchor.
+
+`HashingFunction` selects which MMR roots the bundle uses. Start with
+`Keccak` unless you're verifying inside Cairo, where `Poseidon` is
+the native and more efficient choice.
+
+## Example bundle flow
+
+To see what happens inside a bundle, consider a single Ethereum
+account request:
+
+```rust
+use alloy_primitives::Address;
+use bankai_sdk::{Bankai, HashingFunction, Network};
+
+let proof_bundle = bankai
+    .init_batch(Network::Sepolia, None, HashingFunction::Keccak)
+    .await?
+    .ethereum_account(9_231_247, Address::ZERO)
+    .execute()
+    .await?;
+```
+
+That one call produces a bundle containing three proofs:
+
+1. **Bankai block proof** -- the SDK fetches the block proof for the
+   anchor. After verification this gives you the trusted Bankai block
+   and all its committed MMR roots.
+2. **Execution header MMR proof** -- the SDK requests an MMR inclusion
+   proof for execution block `9_231_247` against the execution MMR
+   root in the Bankai block. After verification this gives you the
+   trusted execution header.
+3. **Account MPT proof** -- the SDK builds an MPT proof for the target
+   address against the `state_root` of the trusted execution header.
+   After verification this gives you the verified account (balance,
+   nonce, code hash, storage root).
+
+When you request multiple objects in the same batch, the SDK
+deduplicates shared dependencies. Two account proofs at the same block
+share the same header proof. Two headers under the same Bankai block
+share the same block proof.
+
+## Ethereum beacon methods
+
+These methods request proofs anchored to the Ethereum beacon chain.
+
+| Method | Parameters | What it returns |
+|---|---|---|
+| `ethereum_beacon_header` | `slot: u64` | A verified beacon header at the given slot. |
+
+## Ethereum execution methods
+
+These methods request proofs anchored to the Ethereum execution layer.
+
+| Method | Parameters | What it returns |
+|---|---|---|
+| `ethereum_execution_header` | `block_number: u64` | A verified execution header. |
+| `ethereum_account` | `block_number: u64`, `address: Address` | An account proof -- balance, nonce, code hash, storage root. |
+| `ethereum_storage_slot` | `block_number: u64`, `address: Address`, `slots: Vec<B256>` | One or more storage slot proofs against the account's storage root. |
+| `ethereum_tx` | `tx_hash: B256` | A transaction proof built from the block's transaction trie. |
+| `ethereum_receipt` | `tx_hash: B256` | A receipt proof built from the block's receipt trie. |
+
+## OP Stack methods
+
+These methods request proofs for any OP Stack chain recognized by the
+Bankai API. Pass the chain name as a string -- for example `"base"` or
+`"worldchain"`.
+
+| Method | Parameters | What it returns |
+|---|---|---|
+| `op_stack_header` | `chain: &str`, `block_number: u64` | A verified OP header. |
+| `op_stack_account` | `chain: &str`, `block_number: u64`, `address: Address` | An OP account proof. |
+| `op_stack_storage_slot` | `chain: &str`, `block_number: u64`, `address: Address`, `slots: Vec<B256>` | One or more OP storage slot proofs. |
+| `op_stack_tx` | `chain: &str`, `tx_hash: B256` | An OP transaction proof. |
+| `op_stack_receipt` | `chain: &str`, `tx_hash: B256` | An OP receipt proof. |
+
+## Read next
+
+- [Verify a Proof](./verify-a-proof.mdx) -- what happens after you
+  have a bundle.
+- [Bankai Blocks](../concepts/bankai-blocks.mdx) -- the trust anchor
+  every bundle starts from.
+- [Supported Chains](./supported-surfaces.mdx) -- available chains
+  and networks.

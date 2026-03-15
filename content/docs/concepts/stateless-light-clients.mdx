@@ -1,0 +1,196 @@
+---
+title: Stateless Light Clients
+description: "Stateless light clients are the core Bankai primitive: trust is carried forward inside recursive proofs instead of stored in verifier state."
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Bankai is built around one idea: a light client whose verifier doesn't need
+persistent state. Instead of storing trusted chain data in a contract and
+continuously syncing it, Bankai carries that trusted state forward inside a
+recursive proof chain. The proof itself becomes the portable trust anchor.
+
+In practice, that means you can verify a single zk proof and immediately
+access all of the light client data Bankai has committed to -- fully
+trustlessly. No contract to deploy, no sync to maintain, no chain-specific
+infrastructure to run. This works on-chain, client-side, or inside another
+proving system. Verify a proof, and on-chain data from any supported chain
+is yours to use.
+
+<Callout title="The one-sentence version">
+Bankai syncs light clients fully off-chain, compresses their
+trusted state into recursive proofs, and lets you verify headers and chain
+objects on demand -- without deploying or maintaining a destination-side
+light-client contract.
+</Callout>
+
+## The problem
+
+Maintaining on-chain light clients is complex and expensive.
+
+The conventional approach works like this: you deploy a verifier contract
+on a destination chain, initialize it with trusted source-chain state, and
+then keep it in sync by submitting on-chain transactions every time
+validator sets rotate, committees hand off, or new checkpoints finalize.
+
+That creates a heavy operational burden:
+
+- Teams must continuously submit sync transactions to keep each client
+  up to date.
+- This has to happen on **every deployed chain, in parallel, and
+  perpetually** -- even during periods when nobody is using the client.
+- Every new destination chain means another contract deployment, another
+  state silo, and another set of sync transactions to maintain.
+- The cost scales with the number of destination environments, not with
+  actual usage.
+
+Bankai's design goal is to remove that always-on destination-side state
+entirely.
+
+## Stateful vs stateless
+
+A conventional light client is **stateful**: the verifier contract holds
+trusted chain state, and every update mutates that storage. The contract
+is the source of truth.
+
+A **stateless** light client replaces that contract storage with a proof
+chain. Each new proof does two things:
+
+1. **Verifies the previous proof** -- confirming the chain of trust so far.
+2. **Verifies the next state transition** -- confirming the new data
+   follows the source chain's rules.
+
+The output of one proof becomes the trusted input to the next. The proof
+chain itself is the source of truth, and verification can happen anywhere
+the proof can be checked -- on-chain, off-chain, or inside another proof
+system.
+
+| | Stateful | Stateless |
+|---|---|---|
+| **Source of truth** | Contract storage | Previous proof output |
+| **Update model** | Mutate stored state | Produce a new proof |
+| **Destination cost** | Per-chain deployment + ongoing sync | None -- verify on demand |
+| **Portability** | One contract per environment | One proof, any environment |
+
+## What "stateless" does and doesn't mean
+
+Stateless does **not** mean the entire system has no state. It means the
+**verification interface** doesn't need persistent state.
+
+The rest of the system is still stateful:
+
+- The source chain (Ethereum, etc.) is obviously stateful.
+- The Bankai prover tracks source-chain data off-chain.
+- Bankai's backend stores snapshots, headers, and proof material it needs
+  to produce proofs.
+
+The statelessness claim is specifically about the verifier and the trust
+anchor it consumes. A verifier only needs the self-contained proof and the
+expected program identity for the Bankai proving program. It doesn't need a
+continuously updated light-client contract.
+
+## How the recursive model works
+
+Each proof in the chain certifies four things:
+
+1. The previous proof was valid (or this is the trusted genesis step).
+2. The previous trusted state was valid.
+3. The next finalized transition is valid under the source chain's rules.
+4. The new trusted state is now the proof's public output.
+
+This gives a verifier a single portable certificate for the entire
+validated history from a trusted checkpoint up to the latest proven state.
+
+In practice, Bankai turns that recursive core into a product primitive:
+
+- Verify the Bankai proof chain once.
+- Trust the verified [Bankai block](./bankai-blocks.mdx) and its
+  commitments.
+- Recover the headers or EVM objects you care about from those
+  commitments.
+
+### How Bankai handles finality
+
+Bankai follows the source chain's notion of finality exactly. It doesn't
+invent its own consensus rule or fork-choice logic.
+
+For Ethereum, that means Bankai mirrors the native finality checkpoints:
+
+- **Latest** -- the most recent block the chain has produced.
+- **Justified** -- a checkpoint that has received enough attestations to
+  be considered likely final.
+- **Finalized** -- a checkpoint that can never be reverted under normal
+  protocol operation.
+
+If a fork happens at the latest epoch, Bankai simply produces a new Bankai
+block on the winning fork. A finalized Ethereum block stays finalized in
+Bankai -- the mapping is one-to-one.
+
+### Why Ethereum is a natural fit
+
+Ethereum provides properties that make it a good first target for this
+design:
+
+- **Deterministic finality** through Casper FFG.
+- **Publicly verifiable committee selection** through the beacon chain.
+- **Sync committees** designed specifically for light clients.
+- **Aggregate BLS signatures** that are relatively efficient to verify
+  inside a ZK circuit.
+
+Bankai's proof chain revolves around these Ethereum primitives: a trusted
+prior client state, a beacon header, a sync committee aggregate signature,
+Merkle witnesses for participating signers, an execution header proved from
+the beacon block, and committee transition data when the sync committee
+rotates.
+
+## Weak subjectivity and bootstrap
+
+Proof-of-stake light clients need a trusted bootstrap checkpoint because of
+[weak subjectivity](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/weak-subjectivity/).
+A client can't safely begin from arbitrary deep history without some
+trusted starting point.
+
+Bankai addresses this in two ways:
+
+1. **Initialize once** from a trusted checkpoint.
+2. **Carry trust forward** cryptographically through recursive proofs from
+   that point on.
+
+Because each recursive proof creates an unforgeable certificate of the
+network's state at a given point, a new verifier doesn't need to replay the
+full history or maintain live sync. It can pick up the proof chain and
+verify continuity from the bootstrap checkpoint to the present. The proof
+chain itself becomes the persistent, tamper-proof record that traditional
+light clients would otherwise store in contract state.
+
+For more detail on what Bankai assumes and guarantees, read the
+[Trust Model](./trust-model.mdx).
+
+## From one chain to many
+
+Nothing about the stateless light client model is specific to one chain.
+Every chain Bankai supports gets the same treatment: off-chain sync,
+recursive proofs, on-demand verification. A single verified
+[Bankai block](./bankai-blocks.mdx) already anchors Ethereum beacon and
+execution headers, OP Stack commitments, and concrete EVM objects like
+accounts, storage slots, transactions, and receipts.
+
+One proof interface, any number of chains.
+
+The roadmap follows that trajectory:
+
+- **Today** -- Bankai gives trust-minimized access to Ethereum L1 and
+  supported OP Stack chains through the same verification model.
+- **Next** -- additional L1s are added behind the same proof interface.
+- **Long term** -- Bankai becomes a unified access layer for a large
+  cross-chain world, where verification is centered on zk proofs rather
+  than per-chain client infrastructure.
+
+## Read next
+
+- [Bankai Blocks](./bankai-blocks.mdx) -- what gets trusted after
+  verification.
+- [Trust Model](./trust-model.mdx) -- practical guarantees and bootstrap
+  assumptions.
+- [SDK Quickstart](../sdk/quickstart.mdx) -- turn this model into a first
+  proof flow.
