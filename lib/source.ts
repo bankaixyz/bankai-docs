@@ -196,6 +196,108 @@ export function getPageImage(page: InferPageType<typeof source>) {
   };
 }
 
+function normalizeLLMMarkdown(text: string) {
+  const lines = text.split('\n');
+  const output: string[] = [];
+  let inCodeBlock = false;
+  let skippingCard = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      output.push(line);
+      continue;
+    }
+
+    if (inCodeBlock) {
+      output.push(line);
+      continue;
+    }
+
+    if (skippingCard) {
+      if (trimmed.includes('/>')) skippingCard = false;
+      continue;
+    }
+
+    if (trimmed === '<Cards>' || trimmed === '</Cards>') continue;
+
+    if (trimmed.startsWith('<Card')) {
+      if (!trimmed.includes('/>')) skippingCard = true;
+      continue;
+    }
+
+    if (trimmed.startsWith('<Callout') || trimmed === '</Callout>') continue;
+
+    output.push(line.replace(/ \[#[-\w]+\]/g, ''));
+  }
+
+  return output.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+const llmSectionPageOrder = {
+  concepts: [
+    'concepts',
+    'stateless-light-clients',
+    'bankai-blocks',
+    'merkle-mountain-ranges',
+    'trust-model',
+  ],
+  sdk: [
+    'sdk',
+    'quickstart',
+    'proof-bundles',
+    'verify-a-proof',
+    'api-client',
+    'supported-surfaces',
+  ],
+} as const;
+
+type LLMSection = keyof typeof llmSectionPageOrder;
+
+export function getLLMSectionUrl(section: LLMSection) {
+  return `/llms-${section}.txt`;
+}
+
+async function getLLMDocText(page: InferPageType<typeof source>, includeTitle = true) {
+  if ('getAPIPageProps' in page.data) {
+    throw new Error('API pages do not support markdown text extraction.');
+  }
+
+  const processed = await page.data.getText('processed');
+  const body = normalizeLLMMarkdown(processed);
+
+  if (!includeTitle) return body;
+
+  return `# ${page.data.title}
+
+${body}`;
+}
+
+export async function getLLMSectionText(section: LLMSection) {
+  const order = llmSectionPageOrder[section];
+  const positions = new Map<string, number>(order.map((slug, index) => [slug, index]));
+  const pages = source
+    .getPages()
+    .filter((page) => !('getAPIPageProps' in page.data) && page.slugs[0] === section)
+    .sort(
+      (a, b) =>
+      (positions.get(a.slugs[1] ?? section) ?? Number.MAX_SAFE_INTEGER) -
+      (positions.get(b.slugs[1] ?? section) ?? Number.MAX_SAFE_INTEGER),
+    );
+
+  const content = await Promise.all(pages.map((page, index) => getLLMDocText(page, index !== 0)));
+
+  return [
+    `# ${section === 'sdk' ? 'SDK' : 'Concepts'}`,
+    '',
+    `Combined plain-text Bankai ${section} documentation for agents.`,
+    '',
+    content.join('\n\n---\n\n'),
+  ].join('\n');
+}
+
 export async function getLLMText(page: InferPageType<typeof source>) {
   if ('getAPIPageProps' in page.data) {
     const operations = page.data
@@ -210,9 +312,5 @@ ${page.data.description ?? ''}
 ${operations ?? ''}`;
   }
 
-  const processed = await page.data.getText('processed');
-
-  return `# ${page.data.title}
-
-${processed}`;
+  return getLLMDocText(page);
 }
