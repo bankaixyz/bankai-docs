@@ -249,6 +249,7 @@ const llmSectionPageOrder = {
     'quickstart',
     'proof-bundles',
     'verify-a-proof',
+    'zkvm',
     'api-client',
     'supported-surfaces',
   ],
