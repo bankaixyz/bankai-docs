@@ -29,21 +29,21 @@ Use `init_batch` to anchor the request to a Bankai block, chain proof
 requests onto the builder, then call `execute()`.
 
 ```rust
-use std::collections::HashMap;
-use alloy_primitives::{Address, B256};
+use std::collections::BTreeMap;
+use alloy_primitives::Address;
 use bankai_sdk::{Bankai, HashingFunction, Network};
 
 let bankai = Bankai::new(
     Network::Sepolia,
     Some("https://sepolia.infura.io/v3/YOUR_KEY".to_string()),
     Some("https://sepolia.beacon-api.example.com".to_string()),
-    Some(HashMap::from([
+    Some(BTreeMap::from([
         ("base".to_string(), "https://base-rpc.example.com".to_string()),
     ])),
 );
 
 let proof_bundle = bankai
-    .init_batch(Network::Sepolia, None, HashingFunction::Keccak)
+    .init_batch(None, HashingFunction::Keccak)
     .await?
     .ethereum_execution_header(9_231_247)
     .ethereum_account(9_231_247, Address::ZERO)
@@ -53,14 +53,16 @@ let proof_bundle = bankai
     .await?;
 ```
 
-The second argument to `init_batch` is an optional Bankai block
-number. When you pass `None`, the SDK anchors to the latest finalized
-Bankai block -- this is the recommended default. Pass an explicit
-number only when you need to pin to a specific anchor.
+The batch automatically inherits the network configured on the
+`Bankai` instance. The first argument to `init_batch` is the optional
+Bankai block number. When you pass `None`, the SDK anchors to the
+latest finalized Bankai block -- this is the recommended default.
+Pass an explicit number only when you need to pin to a specific
+anchor.
 
-`HashingFunction` selects which MMR roots the bundle uses. Start with
-`Keccak` unless you're verifying inside Cairo, where `Poseidon` is
-the native and more efficient choice.
+The second argument, `HashingFunction`, selects which MMR roots the
+bundle uses. Start with `Keccak` unless you're verifying inside
+Cairo, where `Poseidon` is the native and more efficient choice.
 
 ## Example bundle flow
 
@@ -72,7 +74,7 @@ use alloy_primitives::Address;
 use bankai_sdk::{Bankai, HashingFunction, Network};
 
 let proof_bundle = bankai
-    .init_batch(Network::Sepolia, None, HashingFunction::Keccak)
+    .init_batch(None, HashingFunction::Keccak)
     .await?
     .ethereum_account(9_231_247, Address::ZERO)
     .execute()
@@ -114,7 +116,7 @@ These methods request proofs anchored to the Ethereum execution layer.
 |---|---|---|
 | `ethereum_execution_header` | `block_number: u64` | A verified execution header. |
 | `ethereum_account` | `block_number: u64`, `address: Address` | An account proof -- balance, nonce, code hash, storage root. |
-| `ethereum_storage_slot` | `block_number: u64`, `address: Address`, `slots: Vec<B256>` | One or more storage slot proofs against the account's storage root. |
+| `ethereum_storage_slot` | `block_number: u64`, `address: Address`, `slots: Vec<U256>` | One or more storage slot proofs against the account's storage root. |
 | `ethereum_tx` | `tx_hash: B256` | A transaction proof built from the block's transaction trie. |
 | `ethereum_receipt` | `tx_hash: B256` | A receipt proof built from the block's receipt trie. |
 
@@ -128,7 +130,7 @@ Bankai API. Pass the chain name as a string -- for example `"base"` or
 |---|---|---|
 | `op_stack_header` | `chain: &str`, `block_number: u64` | A verified OP header. |
 | `op_stack_account` | `chain: &str`, `block_number: u64`, `address: Address` | An OP account proof. |
-| `op_stack_storage_slot` | `chain: &str`, `block_number: u64`, `address: Address`, `slots: Vec<B256>` | One or more OP storage slot proofs. |
+| `op_stack_storage_slot` | `chain: &str`, `block_number: u64`, `address: Address`, `slots: Vec<U256>` | One or more OP storage slot proofs. |
 | `op_stack_tx` | `chain: &str`, `tx_hash: B256` | An OP transaction proof. |
 | `op_stack_receipt` | `chain: &str`, `tx_hash: B256` | An OP receipt proof. |
 

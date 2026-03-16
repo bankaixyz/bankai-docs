@@ -73,6 +73,10 @@ Pass only the RPCs you need. `Network::Local` and custom API base
 URLs are mainly for local Bankai deployments -- they aren't the main
 onboarding path.
 
+Each batch inherits the network configured on the `Bankai` instance,
+so `init_batch(...)` only needs the Bankai block selector and hashing
+function.
+
 ## First proof flow
 
 Smallest useful end-to-end example:
@@ -92,7 +96,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let proof_bundle = bankai
-        .init_batch(Network::Sepolia, None, HashingFunction::Keccak)
+        .init_batch(None, HashingFunction::Keccak)
         .await?
         .ethereum_execution_header(9_231_247)
         .ethereum_account(9_231_247, Address::ZERO)
@@ -100,9 +104,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     let results = verify_batch_proof(proof_bundle)?;
+    let account = &results.evm.account[0];
 
     println!("Verified block {}", results.evm.execution_header[0].number);
-    println!("Verified balance {}", results.evm.account[0].balance);
+    println!(
+        "Verified balance {} for {} at block {}",
+        account.account.balance,
+        account.address,
+        account.block.block_number
+    );
 
     Ok(())
 }
@@ -110,11 +120,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## What happens here
 
-- `init_batch(...)` anchors the request to a Bankai block
+- `init_batch(...)` anchors the request to a Bankai block on the
+  configured network
 - the batch builder collects the exact proof requests you need
 - `.execute()` fetches one optimized `ProofBundle`
 - `verify_batch_proof(...)` checks the whole trust chain and returns
-  verified outputs
+  verified outputs with request identity attached
 
 ## Read next
 

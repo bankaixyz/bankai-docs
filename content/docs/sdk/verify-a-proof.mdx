@@ -15,6 +15,10 @@ only data that has been cryptographically verified against the
 results are fully trustless. No RPC trust, no external oracle, no
 intermediary.
 
+The verifier also preserves request identity in the output. Verified
+accounts, storage slots, transactions, and receipts carry the block
+they came from plus the address or transaction hash you asked for.
+
 <Callout title="zkVM-compatible out of the box">
 `bankai-verify` is `no_std`-compatible. You can run the same
 verification logic inside a zkVM, giving your proving system seamless
@@ -80,7 +84,9 @@ pub struct BatchResults {
 ```
 
 You only need to read the group that matches the requests you made in
-the batch.
+the batch. The top level separates Ethereum-family results from
+OP Stack results, and the leaf values carry the exact identity of the
+request that produced them.
 
 ### Ethereum results
 
@@ -90,10 +96,10 @@ Access verified Ethereum data through `results.evm`:
 |---|---|---|
 | `execution_header` | `Vec<ExecutionHeader>` | Verified execution headers (alloy `Header`). |
 | `beacon_header` | `Vec<BeaconHeader>` | Verified beacon headers -- slot, proposer index, state root, body root. |
-| `account` | `Vec<Account>` | Verified accounts -- balance, nonce, code hash, storage root. |
-| `storage_slot` | `Vec<Vec<(U256, U256)>>` | Verified storage slot key-value pairs, grouped per request. |
-| `tx` | `Vec<TxEnvelope>` | Verified transactions (alloy `TxEnvelope`). |
-| `receipt` | `Vec<ReceiptEnvelope>` | Verified receipts (alloy `ReceiptEnvelope`). |
+| `account` | `Vec<VerifiedAccount>` | Verified accounts with `block`, `address`, and `account` fields. |
+| `storage_slot` | `Vec<VerifiedStorageSlots>` | Verified storage slot groups with `block`, `address`, and `slots` fields. |
+| `tx` | `Vec<VerifiedTransaction>` | Verified transactions with `block`, `tx_hash`, `tx_index`, and `tx` fields. |
+| `receipt` | `Vec<VerifiedReceipt>` | Verified receipts with `block`, `tx_hash`, `tx_index`, and `receipt` fields. |
 
 ### OP Stack results
 
@@ -103,10 +109,112 @@ mirrors the Ethereum side:
 | Field | Type | What it contains |
 |---|---|---|
 | `header` | `Vec<ExecutionHeader>` | Verified OP headers. |
-| `account` | `Vec<Account>` | Verified OP accounts. |
-| `storage_slot` | `Vec<Vec<(U256, U256)>>` | Verified OP storage slot key-value pairs. |
-| `tx` | `Vec<TxEnvelope>` | Verified OP transactions. |
-| `receipt` | `Vec<ReceiptEnvelope>` | Verified OP receipts. |
+| `account` | `Vec<VerifiedAccount>` | Verified OP accounts with `block`, `address`, and `account` fields. |
+| `storage_slot` | `Vec<VerifiedStorageSlots>` | Verified OP storage slot groups with `block`, `address`, and `slots` fields. |
+| `tx` | `Vec<VerifiedTransaction>` | Verified OP transactions with `block`, `tx_hash`, `tx_index`, and `tx` fields. |
+| `receipt` | `Vec<VerifiedReceipt>` | Verified OP receipts with `block`, `tx_hash`, `tx_index`, and `receipt` fields. |
+
+## Understanding the result shape
+
+`BatchResults` is intentionally shallow at the top and precise at the
+leaves. Headers stay close to their native types, but accounts,
+storage slots, transactions, and receipts are wrapped so the verified
+value always carries its provenance with it.
+
+That provenance matters as soon as you ask for the same address at two
+different blocks, or the same transaction shape across multiple
+networks. You should not have to reconstruct "what this value belongs
+to" from request order alone.
+
+### The shared identity wrapper
+
+Every wrapped result starts with the same block reference:
+
+```rust
+pub struct BlockRef {
+    pub network_id: u64,
+    pub block_number: u64,
+}
+```
+
+`network_id` is the numeric chain ID for the verified chain state, and
+`block_number` is the exact block height that state was verified
+against. For Ethereum execution results, that is the L1 execution
+block. For OP Stack results, that is the OP chain block.
+
+### Account and storage results
+
+Account-like results keep both the block reference and the address you
+requested:
+
+```rust
+pub struct VerifiedAccount {
+    pub block: BlockRef,
+    pub address: Address,
+    pub account: TrieAccount,
+}
+
+pub struct VerifiedStorageSlots {
+    pub block: BlockRef,
+    pub address: Address,
+    pub slots: Vec<(U256, U256)>,
+}
+```
+
+Use these wrappers when you need both the verified payload and the
+identity of the account it came from.
+
+| Field | Meaning |
+|---|---|
+| `block` | The verified chain block that anchors the account or storage view. |
+| `address` | The account address you asked the SDK to prove. |
+| `account` | The verified account payload -- nonce, balance, storage root, and code hash. |
+| `slots` | The verified `(slot_key, slot_value)` pairs for that account and block. |
+
+### Transaction and receipt results
+
+Transaction-like results preserve both the transaction hash and the
+resolved transaction index inside the block:
+
+```rust
+pub struct VerifiedTransaction {
+    pub block: BlockRef,
+    pub tx_hash: FixedBytes<32>,
+    pub tx_index: u64,
+    pub tx: TxEnvelope,
+}
+
+pub struct VerifiedReceipt {
+    pub block: BlockRef,
+    pub tx_hash: FixedBytes<32>,
+    pub tx_index: u64,
+    pub receipt: ReceiptEnvelope,
+}
+```
+
+This gives you enough information to display or persist a verified
+transaction or receipt without separately tracking which block it came
+from.
+
+| Field | Meaning |
+|---|---|
+| `block` | The verified chain block that contains the transaction. |
+| `tx_hash` | The transaction hash you requested. |
+| `tx_index` | The transaction's index in that block. |
+| `tx` | The verified transaction payload. |
+| `receipt` | The verified receipt payload. |
+
+### Why headers are different
+
+Headers are returned as raw header types because the header itself
+already carries the main identity fields you usually need, such as
+block number, roots, and hashes. The wrappers exist for result types
+whose raw payload would otherwise lose important request context.
+
+These wrappers matter when you verify the same address or transaction
+across multiple blocks or networks. You don't need to recover
+provenance from request order -- each verified value carries its own
+identity.
 
 ### Accessing results
 
@@ -116,13 +224,16 @@ batch builder. A typical access pattern:
 ```rust
 let results = verify_batch_proof(proof_bundle)?;
 
-let header = &results.evm.execution_header[0];
-println!("Block {} verified", header.number);
-
 let account = &results.evm.account[0];
-println!("Balance: {}", account.balance);
+println!(
+    "Account {} has balance {} at block {}",
+    account.address,
+    account.account.balance,
+    account.block.block_number
+);
 
-for (key, value) in &results.evm.storage_slot[0] {
+let storage = &results.evm.storage_slot[0];
+for (key, value) in &storage.slots {
     println!("Slot {} = {}", key, value);
 }
 ```

@@ -75,7 +75,7 @@ verifies it, and commits the result.
 ```rust
 // Build a proof bundle with the SDK
 let bundle = bankai
-    .init_batch(Network::Sepolia, None, HashingFunction::Keccak)
+    .init_batch(None, HashingFunction::Keccak)
     .await?
     .ethereum_execution_header(10_000_000)
     .execute()
@@ -92,7 +92,7 @@ stdin.write(&bundle);
 #![no_main]
 sp1_zkvm::entrypoint!(main);
 
-use bankai_types::ProofBundle;
+use bankai_types::inputs::ProofBundle;
 use bankai_verify::verify_batch_proof;
 
 pub fn main() {
