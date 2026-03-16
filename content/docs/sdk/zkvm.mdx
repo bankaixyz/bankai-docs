@@ -77,7 +77,7 @@ verifies it, and commits the result.
 let bundle = bankai
     .init_batch(Network::Sepolia, None, HashingFunction::Keccak)
     .await?
-    .ethereum_storage_slot(block, contract, vec![slot_key])
+    .ethereum_execution_header(10_000_000)
     .execute()
     .await?;
 
@@ -97,13 +97,13 @@ use bankai_verify::verify_batch_proof;
 
 pub fn main() {
     let bundle = sp1_zkvm::io::read::<ProofBundle>();
-    let result = verify_batch_proof(bundle)
-        .expect("verification failed");
 
-    // Use the verified data, here we grab a storage slot value
-    let slot_value: [u8; 32] =
-        result.evm.storage_slot[0][0].1.to_be_bytes();
-    sp1_zkvm::io::commit_slice(slot_value.as_slice());
+    let result = verify_batch_proof(bundle).expect("failed to verify batch proof");
+
+    let header = &result.evm.execution_header[0];
+
+    sp1_zkvm::io::commit(&header.state_root);
+    sp1_zkvm::io::commit(&header.number);
 }
 ```
 
@@ -112,29 +112,36 @@ program verifies and uses it. Everything in `result` is
 cryptographically verified. You can apply any logic on top and commit
 whatever you need as public output.
 
-For a full working example with World ID root verification, see the
-[bankai-examples](https://github.com/bankaixyz/examples)
-repository.
+The fastest way to get started is to clone the
+[bankai-sp1-template](https://github.com/bankaixyz/bankai-sp1-template).
+It ships with all version pins, the lockfile, and a working example
+you can customize immediately.
 
 ## Setup
 
-The current integration targets **SP1** (Succinct's zkVM). There are
-version constraints you need to follow carefully.
+Clone the
+[bankai-sp1-template](https://github.com/bankaixyz/bankai-sp1-template)
+to get started. It contains the correct toolchain, pinned
+dependencies, a working `Cargo.lock`, and a ready-to-run example.
+
+```sh
+git clone https://github.com/bankaixyz/bankai-sp1-template.git
+cd bankai-sp1-template
+cp .env.example .env   # add your EXECUTION_RPC
+```
+
+You need [Rust](https://rustup.rs/) and
+[SP1](https://docs.succinct.xyz/docs/sp1/getting-started/install)
+(`sp1up && sp1up --version 5.2.2`) installed. The template's
+`rust-toolchain.toml` handles the correct nightly version
+automatically.
 
 <Callout title="Active version constraints">
-We are actively working on resolving these version pins. For now, you
-must stay on the exact versions listed below. Deviating from them will
-cause build failures during `cargo prove build`.
+We are actively working on resolving these version pins. For now,
+do not change the toolchain or dependency versions in the template.
+Deviating from them will cause build failures during
+`cargo prove build`.
 </Callout>
-
-### Requirements
-
-You need the following installed:
-
-- [Rust](https://rustup.rs/), pinned to `nightly-2025-07-14`
-  (Rust 1.90 nightly)
-- [SP1](https://docs.succinct.xyz/docs/sp1/getting-started/install),
-  pinned to `v5.2.2`
 
 ### Version pins
 
@@ -165,8 +172,10 @@ keeps the pin stable.
 
 ### Workspace `Cargo.toml`
 
-Your workspace root must pin all the versions above. Use this as a
-starting point:
+The [bankai-sp1-template](https://github.com/bankaixyz/bankai-sp1-template)
+already has all of this wired up. If you're starting from scratch,
+use it as your base. For reference, the workspace root looks like
+this:
 
 ```toml
 [workspace]
@@ -184,11 +193,11 @@ sp1-zkvm = { version = "=5.2.2" }
 sp1-build = { version = "=5.2.2", default-features = false }
 
 bankai-sdk = { git = "https://github.com/bankaixyz/bankai-sdk",
-  tag = "v0.1.2.1" }
+  tag = "v0.1.2.2" }
 bankai-verify = { git = "https://github.com/bankaixyz/bankai-sdk",
-  tag = "v0.1.2.1" }
+  tag = "v0.1.2.2" }
 bankai-types = { git = "https://github.com/bankaixyz/bankai-sdk",
-  tag = "v0.1.2.1" }
+  tag = "v0.1.2.2" }
 
 ethereum_hashing = { git = "https://github.com/bankaixyz/ethereum_hashing",
   rev = "c457c3e", default-features = false, features = ["portable"] }
