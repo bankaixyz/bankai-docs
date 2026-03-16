@@ -1,0 +1,209 @@
+---
+title: zkVM integration
+description: Run Bankai verification inside a zkVM to produce a
+  Groth16 proof over trustless on-chain data, verifiable on any chain.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Bankai becomes its most powerful when paired with a zkVM. The SDK
+builds [proof bundles](./proof-bundles.mdx) containing whatever
+on-chain data you need, and `bankai-verify` is `no_std`-compatible, so
+you can run the exact same verification logic inside a proving system.
+The zkVM produces a Groth16 proof over the verified result, and that
+proof is verifiable on any chain where a Groth16 verifier is deployed.
+No bridges, no relays, no destination-side light client. Trustless data
+anywhere, on demand.
+
+<Callout title="Bankai unleashed">
+A zkVM turns Bankai from a verification library into a universal data
+bridge. You access any on-chain data, prove its correctness inside the
+zkVM, add your own application logic, and write the result as public
+output. One Groth16 proof carries both the data and your logic to any
+chain.
+</Callout>
+
+## Why this matters
+
+Without a zkVM, Bankai verification runs in your off-chain process.
+The result is trustworthy to you, but you can't prove that to a third
+party without revealing your verification logic and re-running it.
+
+Inside a zkVM, the entire flow (proof bundle verification plus your
+application logic) becomes a single zero-knowledge proof. The
+implications:
+
+- **Trustless composability.** Your program reads verified on-chain
+  data, applies arbitrary logic, and commits the output. Anyone can
+  verify the result on-chain without trusting you or your servers.
+- **Chain-agnostic verification.** The Groth16 proof is verifiable
+  wherever a Groth16 verifier contract exists. One proof works on Ethereum,
+  Starknet, Solana, or any other destination.
+- **No bridge dependencies.** There is no relay to operate, no
+  destination-side contract to sync, no cross-chain messaging protocol
+  to integrate.
+- **Minimal trust surface.** The only trust assumptions are the zkVM
+  circuit itself and the Bankai proof chain. Both are fully verifiable.
+
+## The flow
+
+The interaction between your script, Bankai, the zkVM, and the
+destination chain:
+
+1. Your **script** uses the SDK to request a proof bundle for the
+   on-chain data you need.
+2. The SDK calls the **Bankai API**, which reads the data from
+   Ethereum (or an OP Stack chain) with full cryptographic proofs.
+3. The script serializes the proof bundle into the **zkVM stdin**.
+4. The **zkVM program** reads the bundle, calls `verify_batch_proof`,
+   and accesses the verified data. It applies your custom logic and
+   commits the result as public output.
+5. The script runs the zkVM in **Groth16 mode**, producing a succinct
+   proof.
+6. The proof is submitted to the **destination chain**, where a
+   Groth16 verifier contract validates it.
+
+## Minimal example
+
+An SP1 project has two halves: a **script** that runs on your machine
+and a **program** that runs inside the zkVM. The script builds the
+proof bundle and writes it to the zkVM's stdin. The program reads it,
+verifies it, and commits the result.
+
+### Script (host side)
+
+```rust
+// Build a proof bundle with the SDK
+let bundle = bankai
+    .init_batch(Network::Sepolia, None, HashingFunction::Keccak)
+    .await?
+    .ethereum_storage_slot(block, contract, vec![slot_key])
+    .execute()
+    .await?;
+
+// Write it into the zkVM stdin
+let mut stdin = SP1Stdin::new();
+stdin.write(&bundle);
+```
+
+### Program (zkVM side)
+
+```rust
+#![no_main]
+sp1_zkvm::entrypoint!(main);
+
+use bankai_types::ProofBundle;
+use bankai_verify::verify_batch_proof;
+
+pub fn main() {
+    let bundle = sp1_zkvm::io::read::<ProofBundle>();
+    let result = verify_batch_proof(bundle)
+        .expect("verification failed");
+
+    // Use the verified data, here we grab a storage slot value
+    let slot_value: [u8; 32] =
+        result.evm.storage_slot[0][0].1.to_be_bytes();
+    sp1_zkvm::io::commit_slice(slot_value.as_slice());
+}
+```
+
+That's it. The script feeds trustless data into the zkVM, and the
+program verifies and uses it. Everything in `result` is
+cryptographically verified. You can apply any logic on top and commit
+whatever you need as public output.
+
+For a full working example with World ID root verification, see the
+[bankai-examples](https://github.com/bankaixyz/examples)
+repository.
+
+## Setup
+
+The current integration targets **SP1** (Succinct's zkVM). There are
+version constraints you need to follow carefully.
+
+<Callout title="Active version constraints">
+We are actively working on resolving these version pins. For now, you
+must stay on the exact versions listed below. Deviating from them will
+cause build failures during `cargo prove build`.
+</Callout>
+
+### Requirements
+
+You need the following installed:
+
+- [Rust](https://rustup.rs/), pinned to `nightly-2025-07-14`
+  (Rust 1.90 nightly)
+- [SP1](https://docs.succinct.xyz/docs/sp1/getting-started/install),
+  pinned to `v5.2.2`
+
+### Version pins
+
+The Bankai SDK depends on `alloy` crates that conflict with newer Rust
+toolchains. Until this is resolved, every project must respect these
+constraints:
+
+| Requirement | Value | Why |
+|---|---|---|
+| Rust toolchain | `nightly-2025-07-14` | Newer toolchains resolve `alloy` versions that break compatibility. |
+| SP1 version | `=5.2.2` | Must match the toolchain pin. |
+| Cargo resolver | `"3"` | Prevents Cargo from resolving newer `alloy` crates that need Rust 1.91+. |
+| `smol_str` | `0.3.2` | Newer versions require a newer toolchain during `cargo prove build`. |
+| `ethereum_hashing` | Patched fork | Required override, do not remove. |
+
+### The `smol_str` downgrade
+
+`smol_str` is a transitive dependency whose newer versions don't
+compile under Rust 1.90. You need to downgrade it to a version that
+does:
+
+```sh
+cargo update -p smol_str --precise 0.3.2
+```
+
+Run this after any `Cargo.lock` change. Committing the lockfile
+keeps the pin stable.
+
+### Workspace `Cargo.toml`
+
+Your workspace root must pin all the versions above. Use this as a
+starting point:
+
+```toml
+[workspace]
+members = ["program", "script"]
+resolver = "3"
+
+[workspace.dependencies]
+alloy-primitives = { version = "1.3.1", default-features = false,
+  features = ["serde"] }
+tokio = { version = "1.39.0", default-features = false }
+
+sp1-sdk = { version = "=5.2.2", default-features = false,
+  features = ["network"] }
+sp1-zkvm = { version = "=5.2.2" }
+sp1-build = { version = "=5.2.2", default-features = false }
+
+bankai-sdk = { git = "https://github.com/bankaixyz/bankai-sdk",
+  tag = "v0.1.2.1" }
+bankai-verify = { git = "https://github.com/bankaixyz/bankai-sdk",
+  tag = "v0.1.2.1" }
+bankai-types = { git = "https://github.com/bankaixyz/bankai-sdk",
+  tag = "v0.1.2.1" }
+
+ethereum_hashing = { git = "https://github.com/bankaixyz/ethereum_hashing",
+  rev = "c457c3e", default-features = false, features = ["portable"] }
+
+[patch.crates-io]
+ethereum_hashing = { git = "https://github.com/bankaixyz/ethereum_hashing",
+  rev = "c457c3e" }
+```
+
+## Read next
+
+- [Quickstart](./quickstart.mdx), the SDK basics without a zkVM.
+- [Proof Bundles](./proof-bundles.mdx), how to build the bundle
+  your zkVM program consumes.
+- [Verify a Proof](./verify-a-proof.mdx), the trust chain that
+  runs inside the zkVM.
+- [Supported Chains](./supported-surfaces.mdx), all chains and
+  data types available to your program.
